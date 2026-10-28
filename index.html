@@ -560,14 +560,23 @@ $("jobForm").addEventListener("submit", async event => {
         return;
       }
 
-      const updated = { ...existing, ...data };
-      const { error } = await db
-        .from("ih_jobs")
-        .update(toDatabase(updated))
-        .eq("id", editingId);
+      
+const updated = { ...existing, ...data };
 
-      if (error) throw error;
+const { data: savedJob, error } = await db
+  .from("ih_jobs")
+  .update(toDatabase(updated))
+  .eq("id", editingId)
+  .select()
+  .maybeSingle();
 
+if (error) throw error;
+
+if (!savedJob) {
+  throw new Error(
+    "No job was updated. Check the job ID and Supabase UPDATE policy."
+  );
+}
       jobs = jobs.map(j => j.id === editingId ? updated : j);
       const id = editingId;
       resetFormMode();
