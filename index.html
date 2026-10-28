@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corporate IH Control Center</title>
+<style>
+:root {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #182538;
+  background: #f3f6fa;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+header {
+  background: #14243b; color: white;
+  padding: 22px max(20px, calc((100% - 1250px)/2));
+}
+header h1 { margin: 0 0 6px; font-size: 25px; }
+header p { margin: 0; color: #b9c9df; }
+main { max-width: 1250px; margin: 26px auto; padding: 0 18px; }
+h2 { font-size: 18px; margin: 0 0 17px; }
+.muted { color: #718096; font-size: 13px; }
+.toolbar, .filters, .formgrid {
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.toolbar { justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.filters { margin-bottom: 18px; }
+.filters select { flex: 1; min-width: 150px; }
+input, select, button {
+  font: inherit; border-radius: 8px; padding: 10px 12px;
+  border: 1px solid #d6deea; background: white; color: #182538;
+}
+button { cursor: pointer; font-weight: 600; }
+.primary { background: #2563eb; color: white; border-color: #2563eb; }
+.primary:hover { background: #1d4ed8; }
+.kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 13px; margin-bottom: 20px; }
+.card, .panel {
+  background: white; border: 1px solid #e2e8f0;
+  border-radius: 12px; padding: 18px;
+}
+.kpi-label { color: #718096; font-size: 13px; }
+.kpi-value { font-size: 30px; font-weight: 700; margin-top: 8px; }
+.alerts { display: grid; grid-template-columns: repeat(2,1fr); gap: 13px; margin-bottom: 20px; }
+.alert { border-left: 4px solid #d97706; }
+.alert strong { font-size: 25px; display: block; margin: 7px 0; }
+.panel { margin-bottom: 20px; }
+.panel.editing { border-color: #2563eb; box-shadow: 0 0 0 3px #dbeafe; }
+.formgrid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+label { font-size: 13px; font-weight: 600; display: block; }
+label input, label select { display: block; width: 100%; margin-top: 6px; }
+.actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 1250px; }
+th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #edf0f5; font-size: 13px; }
+th { color: #718096; background: #f8fafc; }
+.status { border-radius: 20px; padding: 5px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.Pending { background: #fff2cf; color: #8a5800; }
+.Ongoing { background: #dbeafe; color: #1d4ed8; }
+.Reporting { background: #eee5ff; color: #6d28d9; }
+.Completed { background: #d9f8e8; color: #166534; }
+.overdue { color: #b91c1c; font-weight: 700; }
+.smallbtn { padding: 6px 10px; font-size: 12px; }
+.danger { color: #b91c1c; border-color: #f0b4b4; }
+.danger:hover { background: #fdecec; }
+.danger.armed { background: #b91c1c; color: white; border-color: #b91c1c; }
+.rowactions { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+.empty { padding: 22px; text-align: center; color: #718096; }
+.banner {
+  background: #fff7e0; border: 1px solid #f2d27a; color: #7a5200;
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px;
+}
+.msg { font-size: 13px; font-weight: 600; }
+.msg.ok { color: #166534; }
+.msg.err { color: #b91c1c; }
+footer { text-align: center; color: #718096; font-size: 12px; padding: 15px; }
+@media(max-width:900px) {
+  .kpis { grid-template-columns: repeat(2,1fr); }
+  .formgrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:560px) {
+  .kpis, .alerts, .formgrid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<section id="loginPanel" class="panel" style="max-width:430px;margin:70px auto;padding:24px">
+  <h2>Sign in to Corporate IH Control Center</h2>
+  <p class="muted">Use the account created for you in Supabase Authentication.</p>
+  <form id="loginForm">
+    <label>Email address
+      <input id="loginEmail" type="email" required autocomplete="username" style="width:100%;margin:6px 0 14px">
+    </label>
+    <label>Password
+      <input id="loginPassword" type="password" required autocomplete="current-password" style="width:100%;margin:6px 0 14px">
+    </label>
+    <button class="primary" type="submit" id="loginBtn">Sign in</button>
+    <p id="loginMsg" class="msg" role="status" aria-live="polite"></p>
+  </form>
+</section>
+<div id="appShell" hidden>
+<header>
+  <h1>Corporate IH Control Center</h1>
+  <p>Industrial Hygiene Job Management · Multi-site Overview</p>
+  <button type="button" id="signOutBtn" style="margin-top:12px">Sign out</button>
+</header>
+<main>
+  <div id="storageBanner" class="banner" hidden>
+    Browser storage is blocked here, so jobs are kept only while this page stays open.
+    Use <strong>Export CSV</strong> to keep your records, or open this file directly in Chrome/Edge/Firefox.
+  </div>
+
+  <div class="toolbar">
+    <div>
+      <h2>Management dashboard</h2>
+      <div class="muted">Illustrative sample records · Local prototype</div>
+    </div>
+    <button class="primary" id="exportBtn">Export CSV</button>
+  </div>
+
+  <section class="kpis">
+    <div class="card"><div class="kpi-label">Total jobs</div><div class="kpi-value" id="total">0</div></div>
+    <div class="card"><div class="kpi-label">Pending</div><div class="kpi-value" id="pending">0</div></div>
+    <div class="card"><div class="kpi-label">Ongoing</div><div class="kpi-value" id="ongoing">0</div></div>
+    <div class="card"><div class="kpi-label">Reporting / Review</div><div class="kpi-value" id="reporting">0</div></div>
+    <div class="card"><div class="kpi-label">Completed</div><div class="kpi-value" id="completed">0</div></div>
+  </section>
+
+  <section class="alerts">
+    <div class="card alert">
+      <div class="muted">Overdue open jobs</div>
+      <strong id="overdue">0</strong>
+      <div class="muted">Past due date and not completed</div>
+    </div>
+    <div class="card alert" style="border-color:#2563eb">
+      <div class="muted">Due in the next 30 days</div>
+      <strong id="dueSoon">0</strong>
+      <div class="muted">Open jobs due within 30 days</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Filter IH job register</h2>
+    <div class="filters">
+      <select id="siteFilter"><option value="">All sites</option></select>
+      <select id="ownerFilter"><option value="">All owners</option></select>
+      <select id="categoryFilter"><option value="">All IH categories</option></select>
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option>Pending</option><option>Ongoing</option>
+        <option>Reporting</option><option>Completed</option>
+      </select>
+      <input id="search" placeholder="Search job ID, title or report no.">
+    </div>
+  </section>
+
+  <section class="panel" id="formPanel">
+    <h2 id="formTitle">Register new IH job</h2>
+    <form id="jobForm">
+      <div class="formgrid">
+        <label>Job title
+          <input id="title" required maxlength="140" placeholder="e.g. Personal noise monitoring">
+        </label>
+        <label>Report number
+          <input id="reportNo" maxlength="60" placeholder="e.g. RPT-2026-001">
+        </label>
+        <label>Site
+          <input id="site" required maxlength="80" placeholder="e.g. Site A">
+        </label>
+        <label>IH category
+          <select id="category" required>
+            <option value="Chemical exposure">Chemical exposure</option>
+            <option value="Noise">Noise</option>
+            <option value="Heat stress">Heat stress</option>
+            <option value="Indoor air quality">Indoor air quality</option>
+            <option value="Ergonomics">Ergonomics</option>
+            <option value="Biological hazards">Biological hazards</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+        <label>Job owner
+          <input id="owner" required maxlength="100" placeholder="IH professional">
+        </label>
+        <label>Priority
+          <select id="priority"><option>Normal</option><option>High</option><option>Critical</option></select>
+        </label>
+        <label>Status
+          <select id="jobStatus">
+            <option>Pending</option><option>Ongoing</option>
+            <option>Reporting</option><option>Completed</option>
+          </select>
+        </label>
+        <label>Request date
+          <input id="requestDate" type="date" required>
+        </label>
+        <label>Due date
+          <input id="dueDate" type="date" required>
+        </label>
+        <label>Next action
+          <input id="nextAction" maxlength="180" placeholder="e.g. Schedule site sampling">
+        </label>
+      </div>
+      <div class="actions">
+        <button class="primary" type="submit" id="submitBtn">+ Add IH job</button>
+        <button type="button" id="cancelBtn" hidden>Cancel edit</button>
+        <span id="formMsg" class="msg" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>IH job register</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Job ID / Title</th><th>Report No.</th><th>Site</th><th>Category</th><th>Owner</th>
+          <th>Priority</th><th>Due date</th><th>Status</th><th>Next action</th><th>Action</th>
+        </tr></thead>
+        <tbody id="jobRows"></tbody>
+      </table>
+    </div>
+    <div id="empty" class="empty" hidden>No jobs match the selected filters.</div>
+  </section>
+</main>
+<footer>Corporate IH Control Center · Do not enter confidential or personal health information</footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const db = window.supabase.createClient(
+  window.SUPABASE_URL,
+  window.SUPABASE_PUBLISHABLE_KEY
+);
+
+const today = () => new Date().toISOString().slice(0,10);
+let jobs = [];
+let editingId = null;
+let msgTimer;
+
+function showMsg(text, isError = false) {
+  const el = $("formMsg");
+  el.textContent = text;
+  el.className = "msg " + (isError ? "err" : "ok");
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { el.textContent = ""; }, 6000);
+}
+function showLoginMsg(text, isError = false) {
+  $("loginMsg").textContent = text;
+  $("loginMsg").className = "msg " + (isError ? "err" : "ok");
+}
+function toApp(row) {
+  return {
+    id: row.id,
+    reportNo: row.report_no || "",
+    title: row.title,
+    site: row.site,
+    category: row.category,
+    owner: row.owner,
+    priority: row.priority,
+    status: row.status,
+    requestDate: row.request_date,
+    dueDate: row.due_date,
+    nextAction: row.next_action || ""
+  };
+}
+function toDatabase(job) {
+  return {
+    id: job.id,
+    report_no: job.reportNo || null,
+    title: job.title,
+    site: job.site,
+    category: job.category,
+    owner: job.owner,
+    priority: job.priority,
+    status: job.status,
+    request_date: job.requestDate,
+    due_date: job.dueDate,
+    next_action: job.nextAction || null,
+    updated_at: new Date().toISOString()
+  };
+}
+async function loadJobs() {
+  const { data, error } = await db.from("ih_jobs")
+    .select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  jobs = (data || []).map(toApp);
+  render();
+}
+function addOption(select, value) {
+  if (value && !Array.from(select.options).some(o => o.value === value)) {
+    select.add(new Option(value, value));
+  }
+}
+function refreshFilters() {
+  [
+    ["siteFilter","site"],["ownerFilter","owner"],["categoryFilter","category"]
+  ].forEach(([selectId,field]) => {
+    const select = $(selectId);
+    const selected = select.value;
+    select.length = 1;
+    [...new Set(jobs.map(j => j[field]).filter(Boolean))].sort()
+      .forEach(v => addOption(select,v));
+    select.value = selected;
+  });
+}
+function isOpen(job) { return job.status !== "Completed"; }
+function isOverdue(job) { return isOpen(job) && job.dueDate && job.dueDate < today(); }
+function daysUntil(date) {
+  const start = new Date(today() + "T00:00:00");
+  const end = new Date(date + "T00:00:00");
+  return Math.round((end - start) / 86400000);
+}
+function safeCell(row, value) {
+  const td = document.createElement("td");
+  td.textContent = value ?? "";
+  row.append(td);
+  return td;
+}
+function clearFilters() {
+  ["siteFilter","ownerFilter","categoryFilter","statusFilter","search"]
+    .forEach(id => { $(id).value = ""; });
+}
+function resetFormMode() {
+  editingId = null;
+  $("jobForm").reset();
+  $("requestDate").value = today();
+  $("formTitle").textContent = "Register new IH job";
+  $("submitBtn").textContent = "+ Add IH job";
+  $("cancelBtn").hidden = true;
+  $("formPanel").classList.remove("editing");
+}
+function startEdit(job) {
+  editingId = job.id;
+  $("title").value = job.title || "";
+  $("reportNo").value = job.reportNo || "";
+  $("site").value = job.site || "";
+  addOption($("category"), job.category);
+  $("category").value = job.category;
+  $("owner").value = job.owner || "";
+  $("priority").value = job.priority;
+  $("jobStatus").value = job.status;
+  $("requestDate").value = job.requestDate || "";
+  $("dueDate").value = job.dueDate || "";
+  $("nextAction").value = job.nextAction || "";
+  $("formTitle").textContent = "Amend IH job " + job.id;
+  $("submitBtn").textContent = "Save changes";
+  $("cancelBtn").hidden = false;
+  $("formPanel").classList.add("editing");
+  $("formPanel").scrollIntoView({behavior:"smooth", block:"start"});
+  $("title").focus();
+}
+async function deleteJob(job) {
+  const { error } = await db.from("ih_jobs").delete().eq("id", job.id);
+  if (error) { showMsg("Delete failed: " + error.message, true); return; }
+  jobs = jobs.filter(j => j.id !== job.id);
+  if (editingId === job.id) resetFormMode();
+  render();
+  showMsg("Job " + job.id + " deleted.", false);
+}
+function render() {
+  refreshFilters();
+  const site = $("siteFilter").value;
+  const owner = $("ownerFilter").value;
+  const category = $("categoryFilter").value;
+  const status = $("statusFilter").value;
+  const search = $("search").value.toLowerCase();
+  const visible = jobs.filter(j =>
+    (!site || j.site === site) &&
+    (!owner || j.owner === owner) &&
+    (!category || j.category === category) &&
+    (!status || j.status === status) &&
+    (!search || (j.id + " " + j.title + " " + (j.reportNo || "")).toLowerCase().includes(search))
+  );
+
+  const counts = ["Pending","Ongoing","Reporting","Completed"];
+  $("total").textContent = visible.length;
+  counts.forEach(s => {
+    $(s.toLowerCase()).textContent = visible.filter(j => j.status === s).length;
+  });
+  $("overdue").textContent = visible.filter(isOverdue).length;
+  $("dueSoon").textContent = visible.filter(j =>
+    isOpen(j) && daysUntil(j.dueDate) >= 0 && daysUntil(j.dueDate) <= 30
+  ).length;
+
+  const tbody = $("jobRows");
+  tbody.replaceChildren();
+  visible.forEach(j => {
+    const tr = document.createElement("tr");
+    const titleCell = document.createElement("td");
+    const strong = document.createElement("strong");
+    strong.textContent = j.id;
+    titleCell.append(strong, document.createElement("br"), document.createTextNode(j.title));
+    tr.append(titleCell);
+    safeCell(tr, j.reportNo || "—");
+    safeCell(tr, j.site);
+    safeCell(tr, j.category);
+    safeCell(tr, j.owner);
+    safeCell(tr, j.priority);
+    const dueCell = safeCell(tr, j.dueDate);
+    if (isOverdue(j)) {
+      dueCell.className = "overdue";
+      dueCell.title = "Past due date";
+    }
+    const statusCell = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = "status " + j.status;
+    badge.textContent = j.status;
+    statusCell.append(badge);
+    tr.append(statusCell);
+    safeCell(tr, j.nextAction);
+
+    const actionCell = document.createElement("td");
+    const wrap = document.createElement("div");
+    wrap.className = "rowactions";
+    const select = document.createElement("select");
+    ["Pending","Ongoing","Reporting","Completed"].forEach(s => select.add(new Option(s,s)));
+    select.value = j.status;
+    select.setAttribute("aria-label","Update status for " + j.id);
+    select.addEventListener("change", async () => {
+      const { error } = await db.from("ih_jobs")
+        .update({ status: select.value, updated_at: new Date().toISOString() })
+        .eq("id", j.id);
+      if (error) {
+        showMsg("Status update failed: " + error.message, true);
+        select.value = j.status;
+        return;
+      }
+      j.status = select.value;
+      render();
+      showMsg("Status updated for " + j.id + ".", false);
+    });
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "smallbtn";
+    editBtn.textContent = "Edit";
+    editBtn.setAttribute("aria-label","Edit " + j.id);
+    editBtn.addEventListener("click", () => startEdit(j));
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "smallbtn danger";
+    delBtn.textContent = "Delete";
+    delBtn.setAttribute("aria-label","Delete " + j.id);
+    let armTimer;
+    delBtn.addEventListener("click", () => {
+      if (delBtn.classList.contains("armed")) {
+        clearTimeout(armTimer);
+        deleteJob(j);
+      } else {
+        delBtn.classList.add("armed");
+        delBtn.textContent = "Click again to confirm";
+        armTimer = setTimeout(() => {
+          delBtn.classList.remove("armed");
+          delBtn.textContent = "Delete";
+        }, 4000);
+      }
+    });
+    wrap.append(select, editBtn, delBtn);
+    actionCell.append(wrap);
+    tr.append(actionCell);
+    tbody.append(tr);
+  });
+  $("empty").hidden = visible.length > 0;
+}
+
+$("signOutBtn").addEventListener("click", async () => {
+  const { error } = await db.auth.signOut();
+  if (error) showMsg("Sign out failed: " + error.message, true);
+});
+
+
+$("loginForm").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const button = $("loginBtn");
+  button.disabled = true;
+  showLoginMsg("Signing in…");
+
+  try {
+    const { data, error } = await db.auth.signInWithPassword({
+      email: $("loginEmail").value.trim(),
+      password: $("loginPassword").value
+    });
+
+    if (error) {
+      showLoginMsg("Sign-in failed: " + error.message, true);
+      return;
+    }
+
+    if (data.session) {
+      showLoginMsg("Login successful!");
+      await refreshAuth();
+    }
+  } catch (err) {
+    console.error("Login error:", err);
+    showLoginMsg("Login error: " + err.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+
+$("jobForm").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const data = {
+    title: $("title").value.trim(),
+    reportNo: $("reportNo").value.trim(),
+    site: $("site").value.trim(),
+    category: $("category").value,
+    owner: $("owner").value.trim(),
+    priority: $("priority").value,
+    status: $("jobStatus").value,
+    requestDate: $("requestDate").value,
+    dueDate: $("dueDate").value,
+    nextAction: $("nextAction").value.trim()
+  };
+
+  const submit = $("submitBtn");
+  submit.disabled = true;
+
+  try {
+    if (editingId) {
+      const existing = jobs.find(j => j.id === editingId);
+      if (!existing) {
+        resetFormMode();
+        return;
+      }
+
+      const updated = { ...existing, ...data };
+      const { error } = await db
+        .from("ih_jobs")
+        .update(toDatabase(updated))
+        .eq("id", editingId);
+
+      if (error) throw error;
+
+      jobs = jobs.map(j => j.id === editingId ? updated : j);
+      const id = editingId;
+      resetFormMode();
+      render();
+      showMsg("Job " + id + " updated in the cloud.", false);
+    } else {
+      const job = {
+        id: "IH-" + String(Date.now()).slice(-8),
+        ...data
+      };
+
+      const { data: inserted, error } = await db
+        .from("ih_jobs")
+        .insert(toDatabase(job))
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      jobs.unshift(toApp(inserted));
+      clearFilters();
+      resetFormMode();
+      render();
+      showMsg("Job " + job.id + " added to the cloud register.", false);
+    }
+  } catch (error) {
+    console.error("Save job error:", error);
+    showMsg("Save failed: " + error.message, true);
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+$("cancelBtn").addEventListener("click", resetFormMode);
+["siteFilter","ownerFilter","categoryFilter","statusFilter","search"]
+  .forEach(id => $(id).addEventListener("input", render));
+$("exportBtn").addEventListener("click", () => {
+  const fields = ["id","reportNo","title","site","category","owner","priority","status","requestDate","dueDate","nextAction"];
+  const quote = v => '"' + String(v ?? "").replace(/"/g,'""') + '"';
+  const csv = [fields.join(","), ...jobs.map(j => fields.map(f => quote(j[f])).join(","))].join("\r\n");
+  const blob = new Blob(["\uFEFF" + csv],{type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "corporate-ih-jobs.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+async function showApplication(session) {
+  $("loginPanel").hidden = !!session;
+  $("appShell").hidden = !session;
+  if (!session) return;
+  try {
+    await loadJobs();
+    $("requestDate").value = today();
+  } catch (error) {
+    showMsg("Could not load jobs: " + error.message, true);
+  }
+}
+db.auth.onAuthStateChange((_event, session) => {
+  // Defer the data request so it does not run inside the auth callback.
+  setTimeout(() => showApplication(session), 0);
+});
+db.auth.getSession().then(({ data, error }) => {
+  if (error) showLoginMsg(error.message, true);
+  showApplication(data?.session || null);
+});
+</script>
+</body>
+</html>
