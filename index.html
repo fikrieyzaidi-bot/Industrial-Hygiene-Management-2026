@@ -290,6 +290,34 @@ async function loadJobs() {
   jobs = (data || []).map(toApp);
   render();
 }
+  
+let jobsChannel = null;
+
+function startJobSync() {
+  if (jobsChannel) return;
+
+  jobsChannel = db
+    .channel("ih-jobs-live-sync")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "ih_jobs"
+      },
+      async () => {
+        try {
+          await loadJobs();
+        } catch (error) {
+          console.error("Auto-sync error:", error);
+        }
+      }
+    )
+    .subscribe((status) => {
+      console.log("Job sync status:", status);
+    });
+}
+
 function addOption(select, value) {
   if (value && !Array.from(select.options).some(o => o.value === value)) {
     select.add(new Option(value, value));
@@ -594,9 +622,10 @@ async function showApplication(session) {
   $("appShell").hidden = !session;
   if (!session) return;
   try {
-    await loadJobs();
-    $("requestDate").value = today();
-  } catch (error) {
+  await loadJobs();
+  startJobSync();
+  $("requestDate").value = today();
+} catch (error) {
     showMsg("Could not load jobs: " + error.message, true);
   }
 }
