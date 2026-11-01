@@ -22,14 +22,14 @@ function bindFields(root,obj,onChange){root.querySelectorAll("[data-f]").forEach
 /* Editable table. cols:[{k,h,type:'text'|'num'|'area'|'select',opts,calc:(row)=>html,w}] */
 function editTable(el,cols,rows,onChange,opt={}){
   const draw=()=>{el.innerHTML=`<div class="ts"><table><tr>${opt.idx!==false?"<th>#</th>":""}${cols.map(c=>`<th>${esc(c.h)}</th>`).join("")}<th class="noP"></th></tr>${rows.map((r,i)=>`<tr>${opt.idx!==false?`<td>${i+1}</td>`:""}${cols.map(c=>{
-      if(c.calc)return`<td class="${c.n?"n":""}">${c.calc(r,i)}</td>`;
+      if(c.calc)return`<td class="${c.n?"n":""}" data-cr="${i}" data-cc="${cols.indexOf(c)}">${c.calc(r,i)}</td>`;
       const v=esc(r[c.k]??"");const st=c.w?` style="min-width:${c.w}px"`:"";
       if(c.type==="select")return`<td><select data-r="${i}" data-k="${c.k}"${st}>${c.opts.map(o=>`<option${String(o)===String(r[c.k]??"")?" selected":""}>${esc(o)}</option>`).join("")}</select></td>`;
       if(c.type==="area")return`<td><textarea data-r="${i}" data-k="${c.k}"${st}>${v}</textarea></td>`;
       return`<td><input data-r="${i}" data-k="${c.k}" value="${v}"${c.type==="num"?' inputmode="decimal" style="min-width:64px;max-width:90px"':st}></td>`}).join("")}
       <td class="noP"><button class="sm" data-del="${i}" title="Delete row">✕</button></td></tr>`).join("")}</table></div>
       <div class="row noP" style="margin-top:6px"><button class="sm" data-add>+ Add row</button></div>`;
-    el.querySelectorAll("[data-k]").forEach(inp=>{const h=()=>{rows[+inp.dataset.r][inp.dataset.k]=inp.value;onChange&&onChange(false)};inp.oninput=h;inp.onchange=()=>{h();opt.redrawOnChange&&draw()}});
+    el.querySelectorAll("[data-k]").forEach(inp=>{const h=()=>{const ri=+inp.dataset.r;rows[ri][inp.dataset.k]=inp.value;el.querySelectorAll(`[data-cr="${ri}"]`).forEach(td=>td.innerHTML=cols[+td.dataset.cc].calc(rows[ri],ri));onChange&&onChange(false)};inp.oninput=h;inp.onchange=()=>{h();opt.redrawOnChange&&draw()}});
     el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{rows.splice(+b.dataset.del,1);draw();onChange&&onChange(true)});
     el.querySelector("[data-add]").onclick=()=>{rows.push(opt.blank?opt.blank():{});draw();onChange&&onChange(true)}};
   draw();return{redraw:draw}}
@@ -49,7 +49,8 @@ function wordFromBlocks(B,meta){
   const cellP=(t,o)=>String(t??"").split("\n").map(ln=>new D.Paragraph({children:[run(ln,o)],spacing:{after:0}}));
   const out=[];
   for(const b of B){
-    if(b.t==="cover"){b.lines.forEach(l=>out.push(P(l.x,{size:l.size||24,bold:l.bold,center:true,after:l.after??160})))}
+    if(b.t==="cover2"){out.push(...coverWord(D,b.c,meta.logo,run))}
+    else if(b.t==="cover"){b.lines.forEach(l=>out.push(P(l.x,{size:l.size||24,bold:l.bold,center:true,after:l.after??160})))}
     else if(b.t==="h1")out.push(new D.Paragraph({heading:D.HeadingLevel.HEADING_1,children:[run(b.x,{size:26,bold:true,color:NAVY})],spacing:{before:240,after:120}}));
     else if(b.t==="h2")out.push(new D.Paragraph({heading:D.HeadingLevel.HEADING_2,children:[run(b.x,{size:22,bold:true,color:NAVY})],spacing:{before:160,after:80}}));
     else if(b.t==="h3")out.push(new D.Paragraph({heading:D.HeadingLevel.HEADING_3,children:[run(b.x,{size:20,bold:true})],spacing:{before:120,after:60}}));
@@ -74,11 +75,13 @@ function wordFromBlocks(B,meta){
   const ftr=new D.Footer({children:[new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[run(meta.footer+"   Page ",{size:14}),new D.TextRun({children:[D.PageNumber.CURRENT],size:14,font:FONT})]})]});
   return new D.Document({creator:meta.creator||"IH-4",title:meta.title,features:{updateFields:true},
     sections:[{properties:{page:{margin:{top:1100,bottom:1100,left:1200,right:1200}}},headers:{default:hdr},footers:{default:ftr},children:out}]})}
-async function downloadWord(B,meta,name){const doc=wordFromBlocks(B,meta);if(!doc)return;const blob=await docx.Packer.toBlob(doc);download(blob,name);toast("Word report downloaded")}
+async function downloadWord(B,meta,name,info){if(info)meta.logo=await getLogo(info);const doc=wordFromBlocks(B,meta);if(!doc)return;const blob=await docx.Packer.toBlob(doc);download(blob,name);toast("Word report downloaded")}
 
 /* ---------- Report block model → printable HTML (Save as PDF from the browser) ---------- */
-function previewBlocks(B,meta){
+async function previewBlocks(B,meta,info){const w=window.open("","_blank");if(!w){toast("Allow pop-ups to open the preview");return}
+  const lg=info?await getLogo(info):null,lu=lg?URL.createObjectURL(new Blob([lg.data],{type:lg.type})):"";
   const h=[];for(const b of B){
+    if(b.t==="cover2"){h.push(coverHtml(b.c,lu));continue}
     if(b.t==="cover")h.push(`<div class="cover">${b.lines.map(l=>`<div style="font-size:${(l.size||24)/2+2}px;${l.bold?"font-weight:700;":""}margin-bottom:${(l.after??160)/16}px">${esc(l.x).replace(/\n/g,"<br>")}</div>`).join("")}</div>`);
     else if(b.t==="h1")h.push(`<h1>${esc(b.x)}</h1>`);else if(b.t==="h2")h.push(`<h2>${esc(b.x)}</h2>`);else if(b.t==="h3")h.push(`<h3>${esc(b.x)}</h3>`);
     else if(b.t==="p")h.push(`<p style="${b.i?"font-style:italic;":""}${b.bold?"font-weight:700":""}">${esc(b.x).replace(/\n/g,"<br>")}</p>`);
@@ -86,10 +89,65 @@ function previewBlocks(B,meta){
     else if(b.t==="pb")h.push(`<div class="pb"></div>`);else if(b.t==="toc")h.push(`<p><i>Table of contents is generated in the Word file.</i></p>`);
     else if(b.t==="kv")h.push(`<table class="kv">${b.rows.map(r=>`<tr><th>${esc(r[0])}</th><td>${esc(r[1]).replace(/\n/g,"<br>")}</td></tr>`).join("")}</table>`);
     else if(b.t==="table")h.push(`${b.cap?`<div class="cap">${esc(b.cap)}</div>`:""}<table class="${b.small?"sm":""}"><thead><tr>${b.head.map(x=>`<th>${esc(x).replace(/\n/g,"<br>")}</th>`).join("")}</tr></thead>${b.rows.map((r,ri)=>`<tr>${r.map((c,ci)=>{const f=(b.fill&&b.fill[ri+","+ci])||(b.rowFill&&b.rowFill[ri]);return`<td${f?` style="background:#${f}"`:""}>${esc(c).replace(/\n/g,"<br>")}</td>`}).join("")}</tr>`).join("")}</table>`)}
-  const w=window.open("","_blank");if(!w){toast("Allow pop-ups to open the preview");return}
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(meta.title)}</title><style>
   body{font:11pt Arial,sans-serif;max-width:900px;margin:20px auto;color:#111}h1{font-size:15pt;color:#1F3864;margin-top:26px;border-bottom:2px solid #1F3864}h2{font-size:12.5pt;color:#1F3864}h3{font-size:11pt}
   table{border-collapse:collapse;width:100%;margin:6px 0 14px;font-size:9pt}td,th{border:1px solid #888;padding:4px;vertical-align:top}thead th{background:#1F3864;color:#fff}table.sm{font-size:8pt}
   table.kv th{background:#DEEAF6;text-align:left;width:32%}.cap{font-weight:700;font-size:9.5pt;margin-top:8px}.cover{text-align:center;padding:60px 0 40px;page-break-after:always}.pb{page-break-after:always}
   .bar{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:1px solid #ccc}@media print{.bar{display:none}}</style></head><body>
   <div class="bar"><button onclick="print()">🖨 Print / Save as PDF</button> <span style="color:#666;font-size:9pt">${esc(meta.footer)}</span></div>${h.join("")}</body></html>`);w.document.close()}
+
+/* ---------- Company details & logo (cover page) — shared with the CEM Calculator ---------- */
+/* Same storage as CEM: localStorage "ihcc_company" + IndexedDB "ihcc_cem_files" / key "logo" */
+const COMP_KEYS=["consName","consAddr","consTel","consEmail","logoName"];
+function companyDefault(){try{return JSON.parse(localStorage.getItem("ihcc_company"))||{}}catch(e){return{}}}
+function saveCompanyDefault(info){const c={};COMP_KEYS.forEach(k=>c[k]=info[k]||"");try{localStorage.setItem("ihcc_company",JSON.stringify(c))}catch(e){}}
+function applyCompanyDefault(info){const d=companyDefault();if(d.consName)COMP_KEYS.forEach(k=>{if(d[k]!=null)info[k]=d[k]});return info}
+const logoDB={db:null,
+  open(){return this.db?Promise.resolve(this.db):new Promise((res,rej)=>{const r=indexedDB.open("ihcc_cem_files",1);r.onupgradeneeded=()=>r.result.createObjectStore("f");r.onsuccess=()=>res(this.db=r.result);r.onerror=()=>rej(r.error)})},
+  async tx(mode,fn){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction("f",mode),s=t.objectStore("f"),q=fn(s);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})},
+  get(){return this.tx("readonly",s=>s.get("logo"))},put(v){return this.tx("readwrite",s=>s.put(v,"logo"))},del(){return this.tx("readwrite",s=>s.delete("logo"))}};
+async function getLogo(info){if(!info.logoName)return null;try{const lg=await logoDB.get();if(!lg)return null;
+  const bmp=await createImageBitmap(new Blob([lg.data],{type:lg.type}));return{...lg,w:bmp.width,h:bmp.height}}catch(e){return null}}
+function companyCard(el,info,onChange){
+  el.innerHTML=`<h3 style="margin-top:0">Company details (cover page)</h3>
+  <div style="display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:start">
+   <div style="text-align:center"><div id="logoPrev" style="width:170px;height:120px;border:1.5px dashed var(--line);border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="muted" style="font-size:12px">No logo</span></div>
+    <div class="noP" style="margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:6px"><label class="filebtn" style="margin:0;color:var(--ink)">Upload logo<input type="file" id="logoIn" accept="image/png,image/jpeg"></label><button class="sm" id="logoDel" style="display:none">Remove</button></div>
+    <div id="logoName" class="muted" style="font-size:11px;margin-top:4px;word-break:break-all"></div></div>
+   <div class="fg" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div class="span-all"><label>Company name</label><input data-c="consName" placeholder="e.g. ES Techventure Sdn. Bhd."></div>
+    <div class="span-all"><label>Address</label><input data-c="consAddr"></div>
+    <div><label>Tel / fax</label><input data-c="consTel" placeholder="Tel : 03 - … Fax : 03 - …"></div>
+    <div><label>E-mail</label><input data-c="consEmail" placeholder="E-mail: …"></div></div></div>
+  <p class="muted noP" style="font-size:12px;margin:8px 0 0">Saved as your default (shared with the CEM Calculator). Every new report starts with these company details and logo.</p>`;
+  let t;el.querySelectorAll("[data-c]").forEach(i=>{i.value=info[i.dataset.c]||"";i.oninput=()=>{info[i.dataset.c]=i.value;clearTimeout(t);t=setTimeout(()=>saveCompanyDefault(info),600);onChange&&onChange()}});
+  const show=async()=>{const box=el.querySelector("#logoPrev"),lg=await getLogo(info);
+    if(lg){const u=URL.createObjectURL(new Blob([lg.data],{type:lg.type}));box.innerHTML=`<img src="${u}" style="max-width:160px;max-height:110px;object-fit:contain">`}else box.innerHTML='<span class="muted" style="font-size:12px">No logo</span>';
+    el.querySelector("#logoDel").style.display=lg?"":"none";el.querySelector("#logoName").textContent=lg?lg.name:""};
+  el.querySelector("#logoIn").onchange=async e=>{const fl=e.target.files[0];if(!fl)return;if(!/png|jpe?g/i.test(fl.type)){toast("Use a PNG or JPG logo");return}
+    await logoDB.put({name:fl.name,type:fl.type,data:await fl.arrayBuffer()});info.logoName=fl.name;saveCompanyDefault(info);onChange&&onChange();show();toast("Logo saved. It will appear on the cover page.");e.target.value=""};
+  el.querySelector("#logoDel").onclick=async()=>{await logoDB.del().catch(()=>{});info.logoName="";saveCompanyDefault(info);onChange&&onChange();show()};
+  show()}
+
+/* Standard cover page (same layout as the CEM report). c={titles:[...], ref, client, clientDosh, locName, locAddr, rows:[[label,value]]} */
+function coverWord(D,c,logo,run){const AL=D.AlignmentType,out=[],P=(children,o={})=>new D.Paragraph({alignment:o.left?undefined:AL.CENTER,spacing:{before:o.before||0,after:o.after??0},indent:o.indent,tabStops:o.tabs,children});
+  if(logo){const s=Math.min(200/logo.w,96/logo.h,1);out.push(P([new D.ImageRun({type:/png/i.test(logo.type)?"png":"jpg",data:new Uint8Array(logo.data),transformation:{width:Math.round(logo.w*s),height:Math.round(logo.h*s)}})],{after:200}))}
+  out.push(P([run((c.consName||"").toUpperCase(),{bold:true,size:30})],{after:60}));
+  [c.consAddr,c.consTel,c.consEmail].filter(Boolean).forEach(l=>out.push(P([run(l,{size:17,color:"6B7280"})])));
+  out.push(P([],{before:1200,after:400}));
+  c.titles.forEach(l=>out.push(P([run(l,{bold:true,size:34,color:"26406E"})],{after:60})));
+  out.push(P([run(`(REF. NO.: ${c.ref||"-"})`,{bold:true,size:20,color:"26406E"})],{after:900}));
+  out.push(P([run((c.client||"").toUpperCase(),{bold:true,size:24})],{after:40}));
+  if(c.clientDosh)out.push(P([run(`(DOSH NO.: ${c.clientDosh})`,{bold:true,size:21})]));
+  const ln=(c.locName||"").trim();if(ln&&ln.toLowerCase()!==(c.client||"").trim().toLowerCase())out.push(P([run(ln.toUpperCase(),{bold:true,size:23})],{before:300,after:40}));
+  out.push(P([run(String(c.locAddr||"").replace(/\n/g," ").toUpperCase(),{bold:true,size:21})],{before:240,after:900,indent:{left:900,right:900}}));
+  c.rows.filter(r=>r[1]!==null).forEach(([k,v])=>out.push(P([run(k,{bold:true,size:19}),run("\t: "+String(v||"-").toUpperCase(),{bold:true,size:19})],{left:true,after:80,indent:{left:600},tabs:[{type:D.TabStopType.LEFT,position:4200}]})));
+  out.push(new D.Paragraph({children:[new D.PageBreak()]}));return out}
+function coverHtml(c,logoUrl){const e=s=>esc(s).replace(/\n/g," ");
+  return`<div class="cover">${logoUrl?`<img src="${logoUrl}" style="max-width:200px;max-height:96px"><br><br>`:""}<div style="font-size:15pt;font-weight:700">${e((c.consName||"").toUpperCase())}</div>
+  ${[c.consAddr,c.consTel,c.consEmail].filter(Boolean).map(l=>`<div style="font-size:8.5pt;color:#6B7280">${e(l)}</div>`).join("")}
+  <div style="margin:70px 0 50px;color:#26406E;font-weight:700;font-size:17pt;line-height:1.35">${c.titles.map(e).join("<br>")}<div style="font-size:10pt;margin-top:6px">(REF. NO.: ${e(c.ref||"-")})</div></div>
+  <div style="font-weight:700;font-size:12pt">${e((c.client||"").toUpperCase())}</div>${c.clientDosh?`<div style="font-weight:700">(DOSH NO.: ${e(c.clientDosh)})</div>`:""}
+  ${(c.locName||"").trim()&&c.locName.trim().toLowerCase()!==(c.client||"").trim().toLowerCase()?`<div style="font-weight:700;margin-top:14px">${e(c.locName.toUpperCase())}</div>`:""}
+  <div style="font-weight:700;margin:12px 60px 50px">${e(String(c.locAddr||"").toUpperCase())}</div>
+  <table style="width:auto;margin:0 auto;font-weight:700;font-size:9.5pt;border:none">${c.rows.filter(r=>r[1]!==null).map(([k,v])=>`<tr><td style="border:none;text-align:left;padding:3px 12px">${e(k)}</td><td style="border:none;text-align:left">: ${e(String(v||"-").toUpperCase())}</td></tr>`).join("")}</table></div>`}

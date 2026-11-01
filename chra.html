@@ -13,18 +13,20 @@
 <h1>⚗️ Chemical Health Risk Assessment (CHRA) — Report Generator</h1>
 <p class="lead">USECHH Regulations 2000 · DOSH CHRA Manual 3rd Edition (2018). Import each work unit's "Forms A to D" Excel or key in the data; FDR, ER, RR, risk levels and Action Priority are recalculated and checked. Data is saved automatically in this browser.</p>
 
-<div class="sec"><h2>1. Report info</h2><div class="card"><div class="fg" id="fInfo">
- <div class="span2"><label>Company / premise</label><input data-f="client"></div><div><label>Short name</label><input data-f="clientShort"></div><div><label>DOSH registration no.</label><input data-f="doshNo"></div>
- <div class="span-all"><label>Address</label><input data-f="address"></div>
- <div><label>Assessment date</label><input data-f="assessDate"></div><div><label>Date of submission</label><input data-f="submitDate"></div><div><label>Briefing date (Form A)</label><input data-f="briefDate"></div><div><label>Contact person</label><input data-f="contact"></div>
- <div><label>CHRA assessor</label><input data-f="assessor"></div><div><label>Assessor reg. no.</label><input data-f="assessorReg"></div><div><label>Assistant assessor</label><input data-f="assistant"></div><div><label>Assistant reg. no.</label><input data-f="assistantReg"></div>
- <div class="span2"><label>Other team members</label><input data-f="others"></div><div><label>DOSH report no.</label><input data-f="doshReportNo"></div><div><label>Report no. (consultant)</label><input data-f="reportNo"></div>
- <div><label>Consultant</label><input data-f="consName"></div><div class="span2"><label>Consultant address</label><input data-f="consAddr"></div><div><label>Consultant contact</label><input data-f="consTel"></div>
+<div class="sec"><h2>1. Report info</h2><div class="card"><div id="coCard"></div>
+<div id="fInfo"><h3 style="margin-top:18px">Client &amp; assessment</h3><div class="fg">
+ <div><label>Client</label><input data-f="client"></div><div><label>Client DOSH No.</label><input data-f="doshNo"></div><div><label>Report No. (ESM)</label><input data-f="reportNo"></div><div><label>DOSH Report No.</label><input data-f="doshReportNo"></div>
+ <div><label>Assessment date</label><input data-f="assessDate" placeholder="8 September 2026"></div><div class="span2"><label>Location address</label><input data-f="address" placeholder="Site address (shown centred on the cover)"></div><div><label>Location / site name (if different from client)</label><input data-f="locName"></div>
+ <div><label>CHRA assessor</label><input data-f="assessor"></div><div><label>Assessor DOSH Reg. No.</label><input data-f="assessorReg"></div><div><label>CHRA assistant</label><input data-f="assistant"></div><div><label>Assistant DOSH Reg. No.</label><input data-f="assistantReg"></div>
+ <div><label>Date of submission</label><input data-f="submitDate"></div>
+</div>
+<h3 style="margin-top:18px">Assessment details</h3><div class="fg">
+ <div><label>Short name</label><input data-f="clientShort"></div><div><label>Briefing date (Form A)</label><input data-f="briefDate"></div><div><label>Contact person</label><input data-f="contact"></div><div><label>Other team members</label><input data-f="others"></div>
  <div><label>Assessment no. (first / second …)</label><input data-f="nth"></div><div><label>Previous assessment date</label><input data-f="prevDate"></div><div><label>Previous assessor</label><input data-f="prevAssessor"></div><div><label>Previous total CHTH</label><input data-f="prevTotal"></div>
  <div><label>Next reassessment</label><input data-f="nextReassess"></div><div class="span-all"><label>Persons-in-charge interviewed</label><input data-f="pic"></div>
  <div class="span-all"><label>1.1 Company and work site</label><textarea data-f="background" rows="3"></textarea></div>
  <div class="span-all"><label>2.1 Process flow (one paragraph per line)</label><textarea data-f="process" rows="4"></textarea></div>
-</div><h3>1.3 Previous assessment recommendations & current site observation</h3><div id="tPrev"></div></div></div>
+</div></div><h3>1.3 Previous assessment recommendations & current site observation</h3><div id="tPrev"></div></div></div>
 
 <div class="sec"><h2>2. Work units (Forms A–D)</h2><div class="card">
  <div class="row noP" style="margin-bottom:10px"><label class="filebtn">📊 Import "Forms A to D" Excel (one file per work unit, multiple allowed)<input type="file" id="inForms" accept=".xlsx,.xls" multiple></label><button id="bAddWU">+ Add work unit manually</button></div>
@@ -66,27 +68,27 @@ function drawWU(){const w=st.wus[cur],el=$("#wu");if(!w){el.innerHTML='<p class=
   const ch=()=>refresh();
   editTable($("#tB"),[{k:"name",h:"Chemical",w:180},{k:"ingr",h:"Hazardous ingredient",type:"area"},{k:"form",h:"Form"},{k:"hclass",h:"Hazard classification",type:"area"},{k:"hcode",h:"H-code"},{k:"src",h:"Source (SDS date)",type:"area"},{k:"hr",h:"HR"},{k:"dermal",h:"Dermal",type:"select",opts:["Y","N"]},{k:"ingest",h:"Ingestion",type:"select",opts:["Y","N"]}],w.chems,ch);
   editTable($("#tC1"),[{k:"task",h:"Job / task",type:"area"},{k:"chem",h:"Chemical",w:160},{k:"fr",h:"FR",type:"num"},{k:"dr",h:"DR",type:"num"},{h:"FDR",n:1,calc:r=>inhCalc(r).fdr??"–"},{k:"mr",h:"MR",type:"num"},{h:"ER",n:1,calc:r=>inhCalc(r).er??"–"},{k:"hr",h:"HR",type:"num"},
-    {h:"RR",n:1,calc:r=>{const c=inhCalc(r);return(c.rr??"ND")+(c.mismatch?` <span class="pill p-over" title="Form value ${c.formRR}">form ${c.formRR}</span>`:"")}},{h:"Risk",calc:r=>lvlPill(inhCalc(r).lvl)}],w.inh,ch,{redrawOnChange:true});
-  editTable($("#tC2"),[{k:"task",h:"Job / task",type:"area"},{k:"chem",h:"Chemical",w:160},{k:"prop",h:"Hazardous property",type:"select",opts:["Irritation","Sensitisation","Corrosive","Acute toxicity","Skin absorption and other properties"]},{k:"extent",h:"Extent",type:"select",opts:["Small","Large"]},{k:"dur",h:"Duration",type:"select",opts:["Short","Long"]},{k:"risk",h:"Risk (H1/H2/M1/M2/L)",type:"select",opts:["","H1","H2","M1","M2","L"]}],w.derm,ch,{redrawOnChange:true});
+    {h:"RR",n:1,calc:r=>{const c=inhCalc(r);return(c.rr??"ND")+(c.mismatch?` <span class="pill p-over" title="Form value ${c.formRR}">form ${c.formRR}</span>`:"")}},{h:"Risk",calc:r=>lvlPill(inhCalc(r).lvl)}],w.inh,ch);
+  editTable($("#tC2"),[{k:"task",h:"Job / task",type:"area"},{k:"chem",h:"Chemical",w:160},{k:"prop",h:"Hazardous property",type:"select",opts:["Irritation","Sensitisation","Corrosive","Acute toxicity","Skin absorption and other properties"]},{k:"extent",h:"Extent",type:"select",opts:["Small","Large"]},{k:"dur",h:"Duration",type:"select",opts:["Short","Long"]},{k:"risk",h:"Risk (H1/H2/M1/M2/L)",type:"select",opts:["","H1","H2","M1","M2","L"]}],w.derm,ch);
   editTable($("#tD1"),[{k:"task",h:"Job / task",type:"area"},{k:"chem",h:"Chemical"},{k:"roe",h:"Route (risk)"},{k:"iso",h:"Isolation",type:"area"},{k:"isoA",h:"Adq",type:"select",opts:["NA","Y","N"]},{k:"eng",h:"Engineering / ventilation",type:"area"},{k:"engA",h:"Adq",type:"select",opts:["NA","Y","N"]},{k:"ppe",h:"PPE",type:"area"},{k:"ppeA",h:"Adq",type:"select",opts:["NA","Y","N"]},{k:"overall",h:"Overall",type:"select",opts:["N","Y","NA"]},{k:"rec",h:"Recommendation",type:"area",w:260},{k:"ap",h:"AP",type:"select",opts:["","1","2","3"]}],w.tc,ch);
   editTable($("#tD2"),[{k:"existing",h:"Existing organisational control",type:"area",w:320},{k:"adequacy",h:"Adequate",type:"select",opts:["","Y","N","NA"]},{k:"rec",h:"Recommendation",type:"area",w:320}],w.oc,ch);
   editTable($("#tD3"),[{k:"existing",h:"Emergency response preparedness",type:"area",w:320},{k:"adequacy",h:"Adequate",type:"select",opts:["","Y","N","NA"]},{k:"rec",h:"Recommendation",type:"area",w:320}],w.erp,ch);
   editTable($("#tD5"),[{k:"chem",h:"Chemical requiring specific action"},{k:"rec",h:"Recommendation",type:"area",w:360}],w.specific,ch);
   $("#bDelWU").onclick=()=>{if(confirm(`Remove work unit "${w.name}"?`)){st.wus.splice(cur,1);cur=0;drawTabs();drawWU();refresh()}}}
-function drawAll(){bindFields($("#fInfo"),st.info,()=>refresh());
+function drawAll(){companyCard($("#coCard"),st.info,()=>save());bindFields($("#fInfo"),st.info,()=>refresh());
   editTable($("#tPrev"),[{k:"rec",h:"Recommendation",type:"area",w:300},{k:"ap",h:"AP"},{k:"wu",h:"Work unit"},{k:"obs",h:"Site observation (current)",type:"area",w:300}],st.prev,()=>refresh());
   $("#texts").innerHTML=TEXTS.map(([k,l])=>`<div class="tx" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>${esc(l)}</b><button class="sm noP" data-rw="${k}">↻ Rewrite from data</button></div><textarea data-tx="${k}"></textarea></div>`).join("");
   $$("[data-tx]").forEach(el=>{el.value=st.text[el.dataset.tx]??"";el.oninput=()=>{st.text[el.dataset.tx]=el.value;save()}});
   $$("[data-rw]").forEach(b=>b.onclick=()=>{delete st.text[b.dataset.rw];refresh()});
   if(cur>=st.wus.length)cur=0;drawTabs();drawWU();refresh()}
-$("#bSample").onclick=()=>{if(st.wus.length&&!confirm("Replace current data with the previous project (PCM Klang Motor – Toyota Body & Paint Kapar CHRA 2026)?"))return;st=structuredClone(window.CHRA_SAMPLE);cur=0;drawAll();toast("Previous project loaded")};
-$("#bNew").onclick=()=>{if(!confirm("Start a new blank CHRA report? Download a JSON backup first if needed."))return;st=structuredClone(BLANK);cur=0;drawAll()};
+$("#bSample").onclick=()=>{if(st.wus.length&&!confirm("Replace current data with the previous project (PCM Klang Motor – Toyota Body & Paint Kapar CHRA 2026)?"))return;st=structuredClone(window.CHRA_SAMPLE);applyCompanyDefault(st.info);cur=0;drawAll();toast("Previous project loaded")};
+$("#bNew").onclick=()=>{if(!confirm("Start a new blank CHRA report? Download a JSON backup first if needed."))return;st=structuredClone(BLANK);applyCompanyDefault(st.info);cur=0;drawAll()};
 $("#bBackup").onclick=()=>backupJson(st,`CHRA_${(st.info.clientShort||st.info.client||"report").replace(/\W+/g,"_")}.json`);
 $("#inJson").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{st={...structuredClone(BLANK),...await readJsonFile(f)};cur=0;drawAll();toast("Restored")}catch(err){toast("Invalid JSON file")}e.target.value=""};
 $("#inForms").onchange=async e=>{let n=[];for(const f of e.target.files){try{const w=await importForms(f);if(w)n.push(w.name)}catch(err){console.error(err);toast(`Could not read ${f.name}`)}}e.target.value="";drawAll();if(n.length)toast(`Imported: ${n.join(", ")}`)};
 $("#bAddWU").onclick=()=>{st.wus.push(newWU(prompt("Work unit name","")||"New work unit"));cur=st.wus.length-1;drawAll()};
-$("#bWord").onclick=()=>downloadWord(model(),META(),`CHRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""));
-$("#bPrev").onclick=()=>previewBlocks(model(),META());
+$("#bWord").onclick=()=>downloadWord(model(),META(),`CHRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""),st.info);
+$("#bPrev").onclick=()=>previewBlocks(model(),META(),st.info);
 $("#bTheme").onclick=()=>{const d=document.documentElement;d.dataset.theme=d.dataset.theme==="dark"?"":"dark";localStorage.setItem("ihcc_theme",d.dataset.theme)};
 document.documentElement.dataset.theme=localStorage.getItem("ihcc_theme")||"";
 drawAll();

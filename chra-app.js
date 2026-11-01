@@ -1,7 +1,7 @@
 /* Chemical Health Risk Assessment (CHRA) report generator — USECHH Regulations 2000 / DOSH CHRA Manual 3rd Ed. (2018) */
 const KEY="ihcc_chra1";
 const BLANK={info:{nth:"first",consName:"",nextReassess:""},wus:[],prev:[],text:{}};
-let st=Store.load(KEY,BLANK);const save=()=>Store.save(KEY,st);
+let st=Store.load(KEY,BLANK);if(!st.info.consName)applyCompanyDefault(st.info);const save=()=>Store.save(KEY,st);
 const newWU=n=>({name:n||"New work unit",area:"",male:"",female:"",date:"",hours:"",health:"",healthRep:"",suscept:"",abnormal:"",mixed:"",ingestion:"",other:"",chems:[],inh:[],derm:[],tc:[],oc:[],erp:[],em:{existing:"",rec:""},ms:{existing:"",rec:""},specific:[]});
 
 /* ---------- CHRA Manual 3rd Ed. calculations ---------- */
@@ -56,10 +56,11 @@ const textOf=(k,a)=>st.text[k]??TEXTS.find(t=>t[0]===k)[2](a);
 /* ---------- report model (mirrors the ESM CHRA final report structure) ---------- */
 function model(){const I=st.info,a=analyse(),B=[],T=(cap,head,rows,o={})=>B.push({t:"table",cap,head,rows,...o});
   const det=a.W.filter(x=>!x.s.summaryOnly);
-  B.push({t:"cover",lines:[{x:(I.client||"").toUpperCase(),size:28,bold:true},{x:I.address||"",size:20,after:600},{x:"CHEMICAL HEALTH RISK ASSESSMENT (CHRA) REPORT",size:32,bold:true,after:600},
-    {x:`DOSH REGISTRATION NO.: ${I.doshNo||"–"}\nASSESSMENT DATE: ${(I.assessDate||"").toUpperCase()}\nDATE OF SUBMISSION: ${(I.submitDate||"").toUpperCase()}\nCHRA ASSESSOR: ${(I.assessor||"").toUpperCase()} (${I.assessorReg||"–"})${I.assistant?`\nCHRA ASSISTANT: ${I.assistant.toUpperCase()} (${I.assistantReg||"–"})`:""}\nDOSH REPORT NO.: ${I.doshReportNo||"–"}\nREPORT NO.: ${I.reportNo||"–"}`,size:20,after:600},
-    {x:`Prepared by\n${(I.consName||"").toUpperCase()}\n${I.consAddr||""}\n${I.consTel||""}`,size:18}]});
-  B.push({t:"pb"},{t:"h1",x:"CHRA NOTIFICATION FORM (FORM A)"},{t:"kv",rows:[["Date",I.briefDate||""],["Company",I.client],["Address",I.address],["Contact person",I.contact||""]]},
+  B.push({t:"cover2",c:{consName:I.consName,consAddr:I.consAddr,consTel:I.consTel,consEmail:I.consEmail,
+    titles:["CHEMICAL HEALTH RISK","ASSESSMENT (CHRA)","REPORT"],ref:I.reportNo,client:I.client,clientDosh:I.doshNo,locName:I.locName,locAddr:I.address,
+    rows:[["CHRA ASSESSOR NAME",I.assessor],["DOSH REG. NO.",I.assessorReg],["CHRA ASSISTANT NAME",I.assistant?I.assistant:null],["DOSH REG. NO. (ASSISTANT)",I.assistant?I.assistantReg:null],
+      ["DOSH REPORT NO.",I.doshReportNo],["ESM REPORT NO.",I.reportNo],["ASSESSMENT DATE",I.assessDate],["DATE OF SUBMISSION",I.submitDate]]}});
+  B.push({t:"h1",x:"CHRA NOTIFICATION FORM (FORM A)"},{t:"kv",rows:[["Date",I.briefDate||""],["Company",I.client],["Address",I.address],["Contact person",I.contact||""]]},
     {t:"p",x:`Ref: CHEMICAL HEALTH RISK ASSESSMENT REPORT\nThis is to certify that CHRA for the above premise has been conducted and explained to the management / safety and health committee members on ${I.briefDate||"________"}.\n2. In compliance with USECHH Regulations 2000, Regulation 12, the assessor shall furnish the employer with the report of the assessment within one (1) month of the completion of the assessment.\n3. The employer has been informed to take action to control exposure of workers to chemicals hazardous to health as indicated in the CHRA report within one (1) month after receiving the report.`},
     {t:"kv",rows:[["Assessor",`${I.assessor} (${I.assessorReg})${I.assistant?`\n${I.assistant} (${I.assistantReg})`:""}`],["Date of assessment",I.assessDate],["Date of report completion",I.submitDate],["Report ref. no.",I.doshReportNo]]},
     {t:"p",x:"ENDORSEMENT BY EMPLOYER: I hereby declare that I have received the CHRA Report and have been briefed by the above-mentioned assessor.\nName: ____________________   Designation: ____________________   Date: __________   Signature: __________"});
