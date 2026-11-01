@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Noise Risk Assessment — Report Generator</title>
+<link rel="stylesheet" href="ih-modules.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"></script>
+</head><body>
+<div class="top noP"><a href="index.html">← Back to dashboard</a><a href="cem.html">🧪 CEM</a><a href="chra.html">⚗️ CHRA</a>
+ <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button class="tb" id="bSample">📂 Load previous project</button>
+ <label class="tb filebtn" style="background:rgba(255,255,255,.12);color:#fff">⬆ Restore JSON<input type="file" id="inJson" accept=".json"></label>
+ <button class="tb" id="bBackup">⬇ Backup JSON</button><button class="tb" id="bNew">+ New report</button><button class="tb" id="bTheme">◐</button></span></div>
+<div class="wrap">
+<h1>🔊 Noise Risk Assessment (NRA) — Report Generator</h1>
+<p class="lead">OSH (Noise Exposure) Regulations 2019 · ICOP 2019. Enter or import the data, check the QA panel, then download the full report in Word. Data is saved automatically in this browser.</p>
+
+<div class="sec"><h2>1. Report info</h2><div class="card"><div class="fg" id="fInfo">
+ <div><label>Assessment type</label><select data-f="type"><option>Initial</option><option>Review</option></select></div>
+ <div class="span2"><label>Client / workplace name</label><input data-f="client"></div><div><label>Short name</label><input data-f="clientShort"></div>
+ <div class="span2"><label>Address</label><textarea data-f="address" rows="2"></textarea></div><div><label>Workplace term (e.g. outlet area, plant)</label><input data-f="workplace"></div><div><label>Location (short)</label><input data-f="location"></div>
+ <div><label>DOSH registration no.</label><input data-f="doshNo"></div><div><label>Monitoring date(s)</label><input data-f="dates"></div><div><label>Report month</label><input data-f="month"></div><div><label>Report reference no.</label><input data-f="reportNo"></div>
+ <div><label>Management representative</label><input data-f="mgmtRep"></div><div><label>Designation</label><input data-f="mgmtDesig"></div><div><label>Noise Risk Assessor</label><input data-f="assessor"></div><div><label>Assessor DOSH reg. no.</label><input data-f="assessorReg"></div>
+ <div><label>Assistant assessor</label><input data-f="assistant"></div><div><label>Consultant</label><input data-f="consName"></div><div class="span2"><label>Consultant address</label><input data-f="consAddr"></div>
+ <div class="span2"><label>Consultant contact</label><input data-f="consTel"></div><div><label>Work days</label><input data-f="workDays"></div><div><label>Work shift</label><input data-f="workHours"></div>
+ <div><label>Break</label><input data-f="breaks"></div><div><label>Type of exposure</label><input data-f="exposureType"></div><div><label>Recommended PHP model</label><input data-f="phpModel"></div><div><label>Recommended PHP NRR (dB)</label><input data-f="phpNrr" inputmode="decimal"></div>
+ <div class="span-all"><label>1.1 Background</label><textarea data-f="background" rows="3"></textarea></div>
+ <div class="span-all"><label>3.1 Process description (one paragraph per line)</label><textarea data-f="process" rows="4"></textarea></div>
+</div></div></div>
+
+<div class="sec"><h2>2. Instruments (Table 3) & SEGs (Table 5)</h2><div class="card"><div id="tInst"></div>
+ <h3>Similar Exposure Groups — "Match keyword" links personal results to the SEG; "Noise sources" drives Table 13 recommendations</h3><div id="tSeg"></div></div></div>
+
+<div class="sec"><h2>3. Area noise monitoring (Table 7)</h2><div class="card"><div id="tArea"></div></div></div>
+
+<div class="sec"><h2>4. Personal noise exposure (Table 8)</h2><div class="card">
+ <div class="row noP" style="margin-bottom:8px"><label class="filebtn">📊 Import "Datasheet & Calculation" Excel (one per day)<input type="file" id="inDs" accept=".xlsx,.xls" multiple></label>
+ <span class="muted" style="font-size:12px">Reads the Summary + Personal Form sheets. LEX,8h and Dose are recalculated from LeqTe and sampling duration.</span></div>
+ <div id="tPers"></div><div class="kpi" id="kpi"></div></div></div>
+
+<div class="sec"><h2>5. Noise sources, existing controls & PHP</h2><div class="card"><h3>Dominant noise sources (Table 9) and engineering recommendation (Table 13)</h3><div id="tSrc"></div>
+ <div class="fg" style="margin-top:10px"><div class="span2"><label>Existing engineering controls (one per line)</label><textarea id="cEng" rows="3"></textarea></div><div class="span2"><label>Existing administrative controls (one per line)</label><textarea id="cAdm" rows="3"></textarea></div>
+ <div class="span-all"><label>Existing warning signs (one per line)</label><textarea id="cWarn" rows="2"></textarea></div></div>
+ <h3>Existing PHP issued (Table 11)</h3><div id="tPhp"></div></div></div>
+
+<div class="sec"><h2>6. QA check (assessor review)</h2><div class="card" id="qa"></div></div>
+<div class="sec"><h2>7. Report text (auto-written, editable)</h2><div class="card" id="texts"></div></div>
+<div class="sec"><h2>8. Download</h2><div class="card"><div class="row"><button class="pri" id="bWord">⬇ Download Word report (.docx)</button><button id="bPrev">🖨 Preview / Save as PDF</button></div>
+ <p class="muted" style="font-size:12px">Word asks to update fields on opening — click Yes to build the table of contents. Insert appendices A–I (flowchart, layout, noise map, datasheets, printouts, certificates, Form A, photos) after generating.</p></div></div>
+</div>
+<script src="ih-common.js"></script><script src="noise-sample.js"></script><script src="noise-app.js"></script>
+<script>
+let a=null;
+function refresh(){a=analyse();save();
+  $("#kpi").innerHTML=`<div>Monitored<b>${a.n}</b></div><div>&gt; 82 dB(A)<b>${a.c82}</b></div><div>&gt; NEL 85 dB(A)<b>${a.cnel}</b></div><div>&gt; Max 115 dB(A)<b>${a.cmx}</b></div><div>&gt; Peak 140 dB(C)<b>${a.cpk}</b></div><div>Area &gt; 85 dB(A)<b>${a.aRed.length}/${a.A.length}</b></div>`;
+  const Q=qa(a);$("#qa").innerHTML=Q.length?Q.map(([c,m])=>`<div class="${c==="err"?"err":"note"}">${c==="err"?"⛔":"⚠"} ${esc(m)}</div>`).join(""):`<div class="ok">✔ No issues found.</div>`;
+  $$("[data-tx]").forEach(el=>{if(st.text[el.dataset.tx]==null)el.value=textOf(el.dataset.tx,a)})}
+const pill=(b,t)=>`<span class="pill ${b?"p-over":"p-safe"}">${t}</span>`;
+const zp=z=>`<span class="pill ${z==="Purple"?"p-purple":z==="Red"?"p-over":z==="Yellow"?"p-warn":"p-safe"}">${z||"–"}</span>`;
+function drawAll(){bindFields($("#fInfo"),st.info,()=>refresh());
+  const ch=redraw=>{refresh();if(redraw===true)drawAll()};
+  editTable($("#tInst"),[{k:"inst",h:"Instrument"},{k:"mfr",h:"Manufacturer"},{k:"model",h:"Model"},{k:"id",h:"Equipment ID"},{k:"cal",h:"Calibration validity (dd.mm.yyyy – dd.mm.yyyy)",w:220}],st.inst,ch);
+  editTable($("#tSeg"),[{k:"area",h:"Work area"},{k:"seg",h:"SEG"},{k:"n",h:"No. personnel",type:"num"},{k:"sampled",h:"Sampled",type:"num"},{k:"key",h:"Match keyword"},{k:"srcs",h:"Noise sources (comma-separated)",w:240}],st.seg,ch);
+  editTable($("#tArea"),[{k:"area",h:"Working area"},{k:"task",h:"Job specification",type:"area"},{k:"n",h:"No. pers.",type:"num"},{k:"mon",h:"Monitored",type:"num"},{k:"src",h:"Source of noise",w:260},{k:"type",h:"Type",type:"select",opts:["SCN","FCN","IMP"]},{k:"min",h:"Min",type:"num"},{k:"max",h:"Max",type:"num"},{k:"avg",h:"Avg dB(A)",type:"num"},{h:"Zone",calc:r=>zp(zone(num(r.avg)))}],st.area,ch,{redrawOnChange:true});
+  editTable($("#tPers"),[{k:"date",h:"Date"},{k:"seg",h:"SEG (designation)",w:200},{k:"name",h:"Employee"},{k:"area",h:"Working area"},{k:"dosi",h:"Dosimeter ID"},{k:"dur",h:"Duration hh:mm:ss"},{k:"leq",h:"LeqTe",type:"num"},{k:"max",h:"Max",type:"num"},{k:"peak",h:"Peak dB(C)",type:"num"},
+    {h:"LEX,8h",n:1,calc:r=>f1(calcP(r).lex)},{h:"Dose %",n:1,calc:r=>f1(calcP(r).dose)},{h:"Limits",calc:r=>{const c=calcP(r);return pill(c.e82,">82")+" "+pill(c.nel,">85")+" "+pill(c.emx,"Max")+" "+pill(c.epk,"Peak")}}],st.personal,ch,{redrawOnChange:true});
+  editTable($("#tSrc"),[{k:"src",h:"Noise source"},{k:"disc",h:"Discussion",type:"area",w:320},{k:"eng",h:"Engineering recommendation",type:"area",w:300}],st.src,ch);
+  editTable($("#tPhp"),[{k:"type",h:"Type"},{k:"area",h:"Area"},{k:"model",h:"Model"},{k:"nrr",h:"NRR (dB)"}],st.php,ch);
+  [["#cEng","eng"],["#cAdm","adm"],["#cWarn","warn"]].forEach(([s,k])=>{$(s).value=(st.ctl[k]||[]).join("\n");$(s).oninput=()=>{st.ctl[k]=$(s).value.split("\n").map(x=>x.trim()).filter(Boolean);refresh()}});
+  $("#texts").innerHTML=TEXTS.map(([k,l])=>`<div class="tx" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>${esc(l)}</b><button class="sm noP" data-rw="${k}">↻ Rewrite from data</button></div><textarea data-tx="${k}"></textarea></div>`).join("");
+  $$("[data-tx]").forEach(el=>{el.value=st.text[el.dataset.tx]??"";el.oninput=()=>{st.text[el.dataset.tx]=el.value;save()}});
+  $$("[data-rw]").forEach(b=>b.onclick=()=>{delete st.text[b.dataset.rw];refresh()});
+  refresh()}
+$("#bSample").onclick=()=>{if(st.personal.length&&!confirm("Replace the current data with the previous project (PCM Klang Motor – Toyota Sg. Rasah NRA, July 2026)?"))return;st=structuredClone(window.NOISE_SAMPLE);drawAll();toast("Previous project loaded")};
+$("#bNew").onclick=()=>{if(!confirm("Start a new blank NRA report? Download a JSON backup first if you need the current data."))return;st=structuredClone(BLANK);drawAll()};
+$("#bBackup").onclick=()=>backupJson(st,`NRA_${(st.info.clientShort||st.info.client||"report").replace(/\W+/g,"_")}.json`);
+$("#inJson").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{st={...structuredClone(BLANK),...await readJsonFile(f)};drawAll();toast("Restored")}catch(err){toast("Invalid JSON file")}e.target.value=""};
+$("#inDs").onchange=async e=>{let n=0;for(const f of e.target.files){try{n+=await importDatasheet(f)}catch(err){console.error(err);toast(`Could not read ${f.name}`)}}e.target.value="";drawAll();toast(`${n} personal result(s) imported`)};
+$("#bWord").onclick=()=>downloadWord(model(),META(),`${st.info.type||""} NRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""));
+$("#bPrev").onclick=()=>previewBlocks(model(),META());
+$("#bTheme").onclick=()=>{const d=document.documentElement;d.dataset.theme=d.dataset.theme==="dark"?"":"dark";localStorage.setItem("ihcc_theme",d.dataset.theme)};
+document.documentElement.dataset.theme=localStorage.getItem("ihcc_theme")||"";
+drawAll();
+</script></body></html>

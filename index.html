@@ -1,651 +1,649 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#2f5673">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IH Control">
 <title>Corporate IH Control Center</title>
+<script>document.write('<script src="config.js?v='+Date.now()+'"><\/script>')</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root {
-  font-family: "Segoe UI", Arial, sans-serif;
-  color: #182538;
-  background: #f3f6fa;
-}
-* { box-sizing: border-box; }
-body { margin: 0; }
-header {
-  background: #14243b; color: white;
-  padding: 22px max(20px, calc((100% - 1250px)/2));
-}
-header h1 { margin: 0 0 6px; font-size: 25px; }
-header p { margin: 0; color: #b9c9df; }
-main { max-width: 1250px; margin: 26px auto; padding: 0 18px; }
-h2 { font-size: 18px; margin: 0 0 17px; }
-.muted { color: #718096; font-size: 13px; }
-.toolbar, .filters, .formgrid {
-  display: flex; gap: 12px; flex-wrap: wrap;
-}
-.toolbar { justify-content: space-between; align-items: center; margin-bottom: 18px; }
-.filters { margin-bottom: 18px; }
-.filters select { flex: 1; min-width: 150px; }
-input, select, button {
-  font: inherit; border-radius: 8px; padding: 10px 12px;
-  border: 1px solid #d6deea; background: white; color: #182538;
-}
-button { cursor: pointer; font-weight: 600; }
-.primary { background: #2563eb; color: white; border-color: #2563eb; }
-.primary:hover { background: #1d4ed8; }
-.kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 13px; margin-bottom: 20px; }
-.card, .panel {
-  background: white; border: 1px solid #e2e8f0;
-  border-radius: 12px; padding: 18px;
-}
-.kpi-label { color: #718096; font-size: 13px; }
-.kpi-value { font-size: 30px; font-weight: 700; margin-top: 8px; }
-.alerts { display: grid; grid-template-columns: repeat(2,1fr); gap: 13px; margin-bottom: 20px; }
-.alert { border-left: 4px solid #d97706; }
-.alert strong { font-size: 25px; display: block; margin: 7px 0; }
-.panel { margin-bottom: 20px; }
-.panel.editing { border-color: #2563eb; box-shadow: 0 0 0 3px #dbeafe; }
-.formgrid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
-label { font-size: 13px; font-weight: 600; display: block; }
-label input, label select { display: block; width: 100%; margin-top: 6px; }
-.actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.tablewrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; min-width: 1250px; }
-th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #edf0f5; font-size: 13px; }
-th { color: #718096; background: #f8fafc; }
-.status { border-radius: 20px; padding: 5px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.Pending { background: #fff2cf; color: #8a5800; }
-.Ongoing { background: #dbeafe; color: #1d4ed8; }
-.Reporting { background: #eee5ff; color: #6d28d9; }
-.Completed { background: #d9f8e8; color: #166534; }
-.overdue { color: #b91c1c; font-weight: 700; }
-.smallbtn { padding: 6px 10px; font-size: 12px; }
-.danger { color: #b91c1c; border-color: #f0b4b4; }
-.danger:hover { background: #fdecec; }
-.danger.armed { background: #b91c1c; color: white; border-color: #b91c1c; }
-.rowactions { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
-.empty { padding: 22px; text-align: center; color: #718096; }
-.banner {
-  background: #fff7e0; border: 1px solid #f2d27a; color: #7a5200;
-  border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px;
-}
-.msg { font-size: 13px; font-weight: 600; }
-.msg.ok { color: #166534; }
-.msg.err { color: #b91c1c; }
-footer { text-align: center; color: #718096; font-size: 12px; padding: 15px; }
-@media(max-width:900px) {
-  .kpis { grid-template-columns: repeat(2,1fr); }
-  .formgrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
-}
-@media(max-width:560px) {
-  .kpis, .alerts, .formgrid { grid-template-columns: 1fr; }
-}
+:root{--bg:#eef2f5;--card:#fff;--ink:#1d2a35;--mute:#64748b;--line:#d8e0e7;--pri:#2f5673;--pri2:#3f7aa3;
+--safe:#2e8b57;--warn:#d99a1e;--over:#c0392b;--safe-bg:#e3f4ea;--warn-bg:#fdf1d8;--over-bg:#f9e0dd;--chip:#eef3f7}
+[data-theme=dark]{--bg:#0f1720;--card:#18232e;--ink:#e3eaf0;--mute:#94a3b8;--line:#2a3846;--pri:#6aa6d0;--pri2:#8cc0e3;
+--safe-bg:#173325;--warn-bg:#3a2e12;--over-bg:#3d1b18;--chip:#22303d}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px}
+button:disabled{opacity:.55;cursor:default}
+button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+button.sm{padding:3px 8px;font-size:12px}
+button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+input,select,textarea{width:100%;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 9px}
+label{display:block;font-size:12px;color:var(--mute);margin-bottom:3px}
+.top{position:sticky;top:0;z-index:20;background:var(--pri);color:#fff;display:flex;gap:8px;align-items:center;padding:8px 14px;flex-wrap:wrap}
+.top a,.top button{color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);text-decoration:none;border-radius:8px;padding:6px 10px;border-style:solid;border-width:1px}
+.top .sp{flex:1}
+.who{font-size:12px;opacity:.9}
+.wrap{max-width:1280px;margin:0 auto;padding:16px}
+header h1{margin:0;font-size:24px}
+header p{margin:2px 0 14px;color:var(--mute)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{margin:0 0 4px;font-size:16px}
+.card .sub{color:var(--mute);font-size:12px;margin:0 0 10px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
+.kpi b{display:block;font-size:26px}
+.kpi span{color:var(--mute);font-size:12px}
+.kpi.over b{color:var(--over)}.kpi.warn b{color:var(--warn)}.kpi.safe b{color:var(--safe)}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:var(--chip);white-space:nowrap}
+.p-safe{background:var(--safe-bg);color:var(--safe)}.p-warn{background:var(--warn-bg);color:var(--warn)}.p-over{background:var(--over-bg);color:var(--over)}
+.att{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto}
+.att li{padding:7px 4px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:8px;align-items:center}
+.att li:hover{background:var(--chip)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--mute);font-weight:600;white-space:nowrap}
+.tscroll{overflow:auto}
+.heat td,.heat th{text-align:center}
+.heat td.c{cursor:pointer;font-weight:700;font-size:16px;border:2px solid var(--card);border-radius:6px}
+.bar{height:10px;background:var(--chip);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--safe)}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--mute);margin-top:8px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.kanban{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:10px;overflow:auto}
+.col{background:var(--chip);border-radius:10px;padding:8px;min-height:120px}
+.col h3{margin:0 0 8px;font-size:13px}
+.kc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;cursor:grab;font-size:13px}
+body.ro .kc{cursor:default}
+.col.drag{outline:2px dashed var(--pri)}
+.tlrow{display:grid;grid-template-columns:220px 1fr;gap:8px;align-items:center;margin-bottom:6px;font-size:12px}
+.tltrack{position:relative;height:18px;background:var(--chip);border-radius:4px}
+.tlbar{position:absolute;top:0;height:100%;border-radius:4px;background:var(--pri2)}
+.tltoday{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--over)}
+.map{position:relative;width:100%;aspect-ratio:16/8;background:linear-gradient(135deg,var(--chip),var(--card));border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.map svg{position:absolute;inset:0;width:100%;height:100%}
+.dot{position:absolute;transform:translate(-50%,-50%);text-align:center;font-size:11px;pointer-events:none}
+.dot i{display:block;margin:0 auto 2px;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.modal{position:fixed;inset:0;background:rgba(10,20,30,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal.show{display:flex}
+.modal .box{background:var(--card);border-radius:14px;padding:18px;width:min(520px,100%);max-height:90vh;overflow:auto}
+#mLogin{background:var(--bg)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chk{display:flex;gap:14px;flex-wrap:wrap}
+.chk label{display:flex;gap:5px;align-items:center;color:var(--ink);font-size:13px}
+.chk input{width:auto}
+.prog{display:flex;gap:2px}.prog i{width:12px;height:6px;border-radius:2px;background:var(--line)}.prog i.d{background:var(--safe)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:10px;opacity:0;transition:.25s;z-index:60;pointer-events:none}
+.toast.show{opacity:1}
+.muted{color:var(--mute)}
+.ctl{border-left:3px solid var(--over);padding:6px 10px;margin-bottom:8px;background:var(--chip);border-radius:6px}
+.ctl ul{margin:4px 0 0;padding-left:18px;font-size:12px}
+.banner{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+#app{display:none}
+body.authed #app{display:block}
+body.ro .ed,body:not(.admin) .adm{display:none!important}
+body.present .noP{display:none!important}
+body.present{font-size:16px}
+@media(max-width:640px){.tlrow{grid-template-columns:120px 1fr}header h1{font-size:20px}}
+@media print{.top,.noP,button{display:none!important}.card{break-inside:avoid}}
 </style>
 </head>
 <body>
-<section id="loginPanel" class="panel" style="max-width:430px;margin:70px auto;padding:24px">
-  <h2>Sign in to Corporate IH Control Center</h2>
-  <p class="muted">Use the account created for you in Supabase Authentication.</p>
-  <form id="loginForm">
-    <label>Email address
-      <input id="loginEmail" type="email" required autocomplete="username" style="width:100%;margin:6px 0 14px">
-    </label>
-    <label>Password
-      <input id="loginPassword" type="password" required autocomplete="current-password" style="width:100%;margin:6px 0 14px">
-    </label>
-    <button class="primary" type="submit" id="loginBtn">Sign in</button>
-    <p id="loginMsg" class="msg" role="status" aria-live="polite"></p>
-  </form>
-</section>
-<div id="appShell" hidden>
+<div id="app">
+<div class="top">
+  <strong>IH Control</strong><span class="sp"></span>
+  <span class="who" id="who"></span>
+  <a href="cem.html">🧪 CEM Calculator</a>
+  <a href="noise.html">🔊 Noise (NRA)</a>
+  <a href="chra.html">⚗️ CHRA</a>
+  <button id="bDemo" class="adm">Load sample data</button>
+  <button id="bPresent">Presentation</button>
+  <button id="bTheme">◐ Theme</button>
+  <button id="bOut">Log out</button>
+</div>
+
+<div class="wrap">
 <header>
   <h1>Corporate IH Control Center</h1>
-  <p>Industrial Hygiene Job Management · Multi-site Overview</p>
-  <button type="button" id="signOutBtn" style="margin-top:12px">Sign out</button>
+  <p>Industrial Hygiene job management · Multi-site overview · <span id="hdrDate"></span></p>
 </header>
-<main>
-  <div id="storageBanner" class="banner" hidden>
-    Browser storage is blocked here, so jobs are kept only while this page stays open.
-    Use <strong>Export CSV</strong> to keep your records, or open this file directly in Chrome/Edge/Firefox.
+<div class="banner" id="roBanner" style="display:none">You have view-only access. Ask an admin if you need to edit.</div>
+
+<section>
+  <h2 style="font-size:17px;margin:0 0 10px">Management dashboard</h2>
+  <div class="kpis" id="kpis"></div>
+</section>
+
+<div class="grid g2">
+  <div class="card">
+    <h2>Needs attention</h2>
+    <p class="sub">Overdue, due soon and over the OEL. Click an item to find it in the register.</p>
+    <ul class="att" id="att"></ul>
   </div>
-
-  <div class="toolbar">
-    <div>
-      <h2>Management dashboard</h2>
-      <div class="muted">Illustrative sample records · Local prototype</div>
-    </div>
-    <button class="primary" id="exportBtn">Export CSV</button>
+  <div class="card">
+    <h2>OEL exceedance controls</h2>
+    <p class="sub">Every result above the OEL gets a plan following the hierarchy of controls: elimination, substitution, engineering, administrative, PPE.</p>
+    <div id="ctlList"></div>
   </div>
-
-  <section class="kpis">
-    <div class="card"><div class="kpi-label">Total jobs</div><div class="kpi-value" id="total">0</div></div>
-    <div class="card"><div class="kpi-label">Pending</div><div class="kpi-value" id="pending">0</div></div>
-    <div class="card"><div class="kpi-label">Ongoing</div><div class="kpi-value" id="ongoing">0</div></div>
-    <div class="card"><div class="kpi-label">Reporting / Review</div><div class="kpi-value" id="reporting">0</div></div>
-    <div class="card"><div class="kpi-label">Completed</div><div class="kpi-value" id="completed">0</div></div>
-  </section>
-
-  <section class="alerts">
-    <div class="card alert">
-      <div class="muted">Overdue open jobs</div>
-      <strong id="overdue">0</strong>
-      <div class="muted">Past due date and not completed</div>
-    </div>
-    <div class="card alert" style="border-color:#2563eb">
-      <div class="muted">Due in the next 30 days</div>
-      <strong id="dueSoon">0</strong>
-      <div class="muted">Open jobs due within 30 days</div>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>Filter IH job register</h2>
-    <div class="filters">
-      <select id="siteFilter"><option value="">All sites</option></select>
-      <select id="ownerFilter"><option value="">All owners</option></select>
-      <select id="categoryFilter"><option value="">All IH categories</option></select>
-      <select id="statusFilter">
-        <option value="">All statuses</option>
-        <option>Pending</option><option>Ongoing</option>
-        <option>Reporting</option><option>Completed</option>
-      </select>
-      <input id="search" placeholder="Search job ID, title or report no.">
-    </div>
-  </section>
-
-  <section class="panel" id="formPanel">
-    <h2 id="formTitle">Register new IH job</h2>
-    <form id="jobForm">
-      <div class="formgrid">
-        <label>Job title
-          <input id="title" required maxlength="140" placeholder="e.g. Personal noise monitoring">
-        </label>
-        <label>Report number
-          <input id="reportNo" maxlength="60" placeholder="e.g. RPT-2026-001">
-        </label>
-        <label>Site
-          <input id="site" required maxlength="80" placeholder="e.g. Site A">
-        </label>
-        <label>IH category
-          <select id="category" required>
-            <option value="Chemical exposure">Chemical exposure</option>
-            <option value="Noise">Noise</option>
-            <option value="Heat stress">Heat stress</option>
-            <option value="Indoor air quality">Indoor air quality</option>
-            <option value="Ergonomics">Ergonomics</option>
-            <option value="Biological hazards">Biological hazards</option>
-            <option value="Other">Other</option>
-          </select>
-        </label>
-        <label>Job owner
-          <input id="owner" required maxlength="100" placeholder="IH professional">
-        </label>
-        <label>Priority
-          <select id="priority"><option>Normal</option><option>High</option><option>Critical</option></select>
-        </label>
-        <label>Status
-          <select id="jobStatus">
-            <option>Pending</option><option>Ongoing</option>
-            <option>Reporting</option><option>Completed</option>
-          </select>
-        </label>
-        <label>Request date
-          <input id="requestDate" type="date" required>
-        </label>
-        <label>Due date
-          <input id="dueDate" type="date" required>
-        </label>
-        <label>Next action
-          <input id="nextAction" maxlength="180" placeholder="e.g. Schedule site sampling">
-        </label>
-      </div>
-      <div class="actions">
-        <button class="primary" type="submit" id="submitBtn">+ Add IH job</button>
-        <button type="button" id="cancelBtn" hidden>Cancel edit</button>
-        <span id="formMsg" class="msg" role="status" aria-live="polite"></span>
-      </div>
-    </form>
-  </section>
-
-  <section class="panel">
-    <h2>IH job register</h2>
-    <div class="tablewrap">
-      <table>
-        <thead><tr>
-          <th>Job ID / Title</th><th>Report No.</th><th>Site</th><th>Category</th><th>Owner</th>
-          <th>Priority</th><th>Due date</th><th>Status</th><th>Next action</th><th>Action</th>
-        </tr></thead>
-        <tbody id="jobRows"></tbody>
-      </table>
-    </div>
-    <div id="empty" class="empty" hidden>No jobs match the selected filters.</div>
-  </section>
-</main>
-<footer>Corporate IH Control Center · Do not enter confidential or personal health information</footer>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<div class="grid g2">
+  <div class="card">
+    <h2>Risk heatmap</h2>
+    <p class="sub">Location × IH category. Click a cell to filter the register.</p>
+    <div class="tscroll"><table class="heat" id="heat"></table></div>
+    <div class="legend">
+      <span><i style="background:var(--safe-bg);border:1px solid var(--safe)"></i>Below 50% OEL</span>
+      <span><i style="background:var(--warn-bg);border:1px solid var(--warn)"></i>50–99% OEL or something overdue</span>
+      <span><i style="background:var(--over-bg);border:1px solid var(--over)"></i>Over OEL</span>
+      <span>Big number = number of jobs</span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Deadline compliance by location</h2>
+    <p class="sub">% of jobs not overdue</p>
+    <div id="comp"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Exposure trend</h2>
+  <p class="sub">% of OEL per measurement cycle for recurring jobs. Dashed line = OEL limit.</p>
+  <div id="trend"></div>
+</div>
+
+<div class="card noP">
+  <h2>Filter IH job register</h2>
+  <div class="fg" style="margin-top:8px">
+    <div><label>Location</label><select id="fLoc"></select></div>
+    <div><label>Person in charge</label><select id="fPic"></select></div>
+    <div><label>IH category</label><select id="fCat"></select></div>
+    <div><label>Status</label><select id="fSt"></select></div>
+    <div><label>&nbsp;</label><input id="fQ" placeholder="Search title or number"></div>
+  </div>
+</div>
+
+<div class="card noP ed" id="formCard">
+  <h2 id="formTitle">Register a new IH job</h2>
+  <form id="jobForm" autocomplete="off">
+    <div class="fg" style="margin-top:8px">
+      <div style="grid-column:span 2"><label>Job title</label><input name="title" required></div>
+      <div><label>Report number</label><input name="reportNo"></div>
+      <div><label>Location</label><input name="location" list="dlLoc" required></div>
+      <div><label>IH category</label><select name="category"></select></div>
+      <div><label>Person in charge</label><input name="pic" list="dlPic" required></div>
+      <div><label>Priority</label><select name="priority"><option>Normal</option><option>High</option><option>Critical</option></select></div>
+      <div><label>Status</label><select name="status"></select></div>
+      <div><label>Request date</label><input type="date" name="requestDate"></div>
+      <div><label>Deadline</label><input type="date" name="deadline" required></div>
+      <div><label>Measured result</label><input type="number" step="any" name="result"></div>
+      <div><label>Unit</label><input name="unit" placeholder="dBA, mg/m³, lux…"></div>
+      <div><label>OEL / limit</label><input type="number" step="any" name="nab"></div>
+      <div><label>Recurring schedule</label><select name="recur"><option value="0">Not recurring</option><option value="3">Every 3 months</option><option value="6">Every 6 months</option><option value="12">Every 12 months</option><option value="24">Every 24 months</option></select></div>
+    </div>
+    <p class="sub" style="margin-top:8px">Result ÷ OEL: below 50% safe · 50–99% caution · 100% or more over the OEL. Enter the OEL from the standard/regulation you follow. Recurring jobs create the next schedule automatically when marked Completed.</p>
+    <div class="fg">
+      <div><label>Next action</label><input name="nextAction"></div>
+      <div><label>Notes</label><input name="notes"></div>
+    </div>
+    <div class="chk" style="margin:10px 0">
+      <label><input type="checkbox" name="c_sampling">Sampling</label>
+      <label><input type="checkbox" name="c_lab">Lab</label>
+      <label><input type="checkbox" name="c_draft">Draft</label>
+      <label><input type="checkbox" name="c_review">Review</label>
+    </div>
+    <div class="row"><button class="pri" type="submit" id="bSubmit">+ Add IH job</button><button type="button" id="bCancel">Cancel</button></div>
+  </form>
+  <datalist id="dlLoc"></datalist><datalist id="dlPic"></datalist>
+</div>
+
+
+<div class="card">
+  <div class="row" style="justify-content:space-between">
+    <h2>IH job register</h2>
+    <div class="row" id="views"><button data-v="table" class="on">Table</button><button data-v="kanban">Kanban</button><button data-v="timeline">Timeline</button></div>
+  </div>
+  <div class="row" id="quick" style="margin:10px 0"><button data-q="all" class="on">All</button><button data-q="overdue">Overdue</button><button data-q="due30">Due in 30 days</button><button data-q="over">Over OEL</button><span class="muted" id="count" style="margin-left:auto;font-size:12px"></span></div>
+  <div id="reg"></div>
+  <div class="row noP" style="margin-top:12px">
+    <button id="bExp">Export to Excel</button>
+    <label class="ed" style="margin:0"><input type="file" id="fileImp" accept=".xlsx,.xls,.csv" style="display:none"><span style="display:inline-block;border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--ink)">Import from Excel</span></label>
+    <button id="bTpl" class="ed">Download template</button>
+    <button id="bCsv">CSV</button>
+    <span class="muted" style="font-size:12px">Follows the active filters</span>
+  </div>
+  <div id="csvPanel" class="noP" style="display:none;margin-top:10px">
+    <p class="sub">Copy the CSV text below and paste it into Excel or Google Sheets. To import, paste CSV into this box and click Import CSV.</p>
+    <textarea id="csvBox" rows="8" style="font-family:ui-monospace,monospace;font-size:12px"></textarea>
+    <div class="row" style="margin-top:6px"><button class="pri ed" id="bCsvImp">Import CSV</button><button id="bCsvCopy">Copy</button><button id="bCsvClose">Close</button></div>
+  </div>
+</div>
+
+<div class="card adm noP">
+  <h2>Authorised users</h2>
+  <p class="sub">Only people on this list can open the app. Viewer = read only · Editor = add/edit jobs · Admin = everything plus this list. Each person also needs a login in Supabase → Authentication → Users.</p>
+  <div class="tscroll"><table id="usersT"></table></div>
+  <div class="row" style="margin:12px 0 4px"><button id="bBackup">⬇ Download backup (jobs + reports)</button><span class="muted" style="font-size:12px">A JSON copy of all jobs and CEM report data. Keep it somewhere safe; it's confidential. Attached files stay in Supabase Storage.</span></div>
+  <form id="userForm" class="fg" style="margin-top:10px">
+    <div><label>Email or username</label><input name="email" required></div>
+    <div><label>Name</label><input name="name"></div>
+    <div><label>Role</label><select name="role"><option value="viewer">Viewer</option><option value="editor">Editor</option><option value="admin">Admin</option></select></div>
+    <div><label>&nbsp;</label><button class="pri" style="width:100%">Add / update user</button></div>
+  </form>
+</div>
+</div>
+</div>
+
+<!-- Login -->
+<div class="modal" id="mLogin"><div class="box" style="max-width:360px">
+  <h2 style="margin:0">Log in</h2><p class="muted" style="margin:2px 0 14px">Corporate IH Control Center</p>
+  <form id="loginForm">
+    <label>Username or email</label><input id="lu" autocomplete="username" required>
+    <label style="margin-top:8px">Password</label><input id="lp" type="password" autocomplete="current-password" required>
+    <p id="loginErr" style="color:var(--over);font-size:13px;min-height:1em;margin:8px 0"></p>
+    <button class="pri" style="width:100%" id="bLogin">Log in</button>
+  </form>
+</div></div>
+
+<!-- Control modal -->
+<div class="modal" id="mCtl"><div class="box">
+  <h2 style="margin:0 0 4px">Add control</h2><p class="muted" id="ctlJob" style="margin:0 0 10px;font-size:13px"></p>
+  <form id="ctlForm">
+    <div class="fg">
+      <div><label>Control level</label><select name="level"><option>Elimination</option><option>Substitution</option><option>Engineering controls</option><option>Administrative</option><option>PPE</option></select></div>
+      <div><label>PIC</label><input name="pic" required></div>
+      <div style="grid-column:1/-1"><label>Control action</label><input name="action" required></div>
+      <div><label>Implementation deadline</label><input type="date" name="deadline"></div>
+      <div><label>Verification status</label><select name="verif"><option>Planned</option><option>Implemented</option><option>Verified effective</option><option>Not effective</option></select></div>
+      <div style="grid-column:1/-1"><label>Verification notes</label><textarea name="note" rows="2"></textarea></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="pri">Save</button><button type="button" onclick="closeM('mCtl')">Cancel</button></div>
+  </form>
+</div></div>
+
+<div class="modal" id="mConf"><div class="box" style="max-width:360px"><p id="confMsg"></p><div class="row"><button class="pri" id="confYes">Yes</button><button onclick="closeM('mConf')">Cancel</button></div></div></div>
+<div class="toast" id="toast"></div>
+
 <script>
-const $ = id => document.getElementById(id);
-window.SUPABASE_URL = "https://opwspqzgpilxkuvnogpq.supabase.co";
-window.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_uAfnjTzS_skcA5IRC298aw_D2X2tWil";
+/* ---------- constants ---------- */
+const CATS=["Noise","Lighting","Heat stress","Vibration","Dust / particulates","Chemicals (VOC / hazardous)","Ergonomics","Biological"];
+const STATUS=["Waiting","In progress","Reporting","Completed"];
+const LEVELS=["Elimination","Substitution","Engineering controls","Administrative","PPE"];
+const DONE="Completed", EFFECTIVE="Verified effective";
+const CFG=window.IHCC_CONFIG||{};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const local={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let sb=null, me=null, role=null, canEdit=false;
+let jobs=[], sites={}, snap={}, sitesSnap="{}";
+let view="table", quick="all", editId=null, ctlFor=null;
 
-const db = window.supabase.createClient(
-  window.SUPABASE_URL,
-  window.SUPABASE_PUBLISHABLE_KEY
-);
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const pd=s=>{if(!s)return null;const d=new Date(s+"T00:00:00");return isNaN(d)?null:d};
+const iso=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+const addMonths=(s,m)=>{const d=pd(s)||today();d.setMonth(d.getMonth()+m);return iso(d)};
+const fmtD=s=>{const d=pd(s);return d?d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"–"};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const toEmail=u=>{u=u.trim().toLowerCase();return u.includes("@")?u:u+"@"+(CFG.USERNAME_DOMAIN||"ihcc.app")};
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2400)}
+function openM(id){$("#"+id).classList.add("show")} function closeM(id){$("#"+id).classList.remove("show")}
+function confirmBox(msg,fn){$("#confMsg").textContent=msg;$("#confYes").onclick=()=>{closeM("mConf");fn()};openM("mConf")}
 
-
-const today = () => new Date().toISOString().slice(0,10);
-let jobs = [];
-let editingId = null;
-let msgTimer;
-
-function showMsg(text, isError = false) {
-  const el = $("formMsg");
-  el.textContent = text;
-  el.className = "msg " + (isError ? "err" : "ok");
-  clearTimeout(msgTimer);
-  msgTimer = setTimeout(() => { el.textContent = ""; }, 6000);
-}
-function showLoginMsg(text, isError = false) {
-  $("loginMsg").textContent = text;
-  $("loginMsg").className = "msg " + (isError ? "err" : "ok");
-}
-function toApp(row) {
-  return {
-    id: row.id,
-    reportNo: row.report_no || "",
-    title: row.title,
-    site: row.site,
-    category: row.category,
-    owner: row.owner,
-    priority: row.priority,
-    status: row.status,
-    requestDate: row.request_date,
-    dueDate: row.due_date,
-    nextAction: row.next_action || ""
-  };
-}
-function toDatabase(job) {
-  return {
-    id: job.id,
-    report_no: job.reportNo || null,
-    title: job.title,
-    site: job.site,
-    category: job.category,
-    owner: job.owner,
-    priority: job.priority,
-    status: job.status,
-    request_date: job.requestDate,
-    due_date: job.dueDate,
-    next_action: job.nextAction || null,
-    updated_at: new Date().toISOString()
-  };
-}
-async function loadJobs() {
-  const { data, error } = await db.from("ih_jobs")
-    .select("*").order("created_at", { ascending: false });
-  if (error) throw error;
-  jobs = (data || []).map(toApp);
+/* ---------- database sync ---------- */
+async function loadAll(){
+  const [{data:J,error:e1},{data:S}]=await Promise.all([sb.from("ih_jobs").select("id,data"),sb.from("ih_settings").select("key,value").eq("key","sites")]);
+  if(e1){toast("Could not load data: "+e1.message);return}
+  jobs=(J||[]).map(r=>normJob({...r.data,id:r.id}));snap={};jobs.forEach(j=>snap[j.id]=JSON.stringify(j));
+  sites=(S&&S[0]&&S[0].value)||{};sitesSnap=JSON.stringify(sites);
   render();
 }
-  
-let jobsChannel = null;
-
-function startJobSync() {
-  if (jobsChannel) return;
-
-  jobsChannel = db
-    .channel("ih-jobs-live-sync")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "ih_jobs"
-      },
-      async () => {
-        try {
-          await loadJobs();
-        } catch (error) {
-          console.error("Auto-sync error:", error);
-        }
-      }
-    )
-    .subscribe((status) => {
-      console.log("Job sync status:", status);
-    });
-}
-
-function addOption(select, value) {
-  if (value && !Array.from(select.options).some(o => o.value === value)) {
-    select.add(new Option(value, value));
-  }
-}
-function refreshFilters() {
-  [
-    ["siteFilter","site"],["ownerFilter","owner"],["categoryFilter","category"]
-  ].forEach(([selectId,field]) => {
-    const select = $(selectId);
-    const selected = select.value;
-    select.length = 1;
-    [...new Set(jobs.map(j => j[field]).filter(Boolean))].sort()
-      .forEach(v => addOption(select,v));
-    select.value = selected;
+let saving=Promise.resolve();
+function persist(){
+  if(!canEdit||!sb)return;
+  const up=[],cur=new Set();
+  jobs.forEach(j=>{cur.add(j.id);const s=JSON.stringify(j);if(snap[j.id]!==s){up.push({id:j.id,data:j});snap[j.id]=s}});
+  const del=Object.keys(snap).filter(id=>!cur.has(id));del.forEach(id=>delete snap[id]);
+  const ss=JSON.stringify(sites),sitesChanged=ss!==sitesSnap;sitesSnap=ss;
+  if(!up.length&&!del.length&&!sitesChanged)return;
+  saving=saving.then(async()=>{
+    const errs=[];
+    if(up.length){const {error}=await sb.from("ih_jobs").upsert(up);if(error)errs.push(error.message)}
+    if(del.length){const {error}=await sb.from("ih_jobs").delete().in("id",del);if(error)errs.push(error.message)}
+    if(sitesChanged){const {error}=await sb.from("ih_settings").upsert({key:"sites",value:sites});if(error)errs.push(error.message)}
+    if(errs.length){toast("Not saved: "+errs[0]);await loadAll()}
   });
 }
-function isOpen(job) { return job.status !== "Completed"; }
-function isOverdue(job) { return isOpen(job) && job.dueDate && job.dueDate < today(); }
-function daysUntil(date) {
-  const start = new Date(today() + "T00:00:00");
-  const end = new Date(date + "T00:00:00");
-  return Math.round((end - start) / 86400000);
+let reloadT=null;
+function subscribe(){
+  sb.channel("ihcc-live").on("postgres_changes",{event:"*",schema:"public",table:"ih_jobs"},()=>{clearTimeout(reloadT);reloadT=setTimeout(loadAll,600)})
+    .on("postgres_changes",{event:"*",schema:"public",table:"ih_settings"},()=>{clearTimeout(reloadT);reloadT=setTimeout(loadAll,600)}).subscribe();
 }
-function safeCell(row, value) {
-  const td = document.createElement("td");
-  td.textContent = value ?? "";
-  row.append(td);
-  return td;
-}
-function clearFilters() {
-  ["siteFilter","ownerFilter","categoryFilter","statusFilter","search"]
-    .forEach(id => { $(id).value = ""; });
-}
-function resetFormMode() {
-  editingId = null;
-  $("jobForm").reset();
-  $("requestDate").value = today();
-  $("formTitle").textContent = "Register new IH job";
-  $("submitBtn").textContent = "+ Add IH job";
-  $("cancelBtn").hidden = true;
-  $("formPanel").classList.remove("editing");
-}
-function startEdit(job) {
-  editingId = job.id;
-  $("title").value = job.title || "";
-  $("reportNo").value = job.reportNo || "";
-  $("site").value = job.site || "";
-  addOption($("category"), job.category);
-  $("category").value = job.category;
-  $("owner").value = job.owner || "";
-  $("priority").value = job.priority;
-  $("jobStatus").value = job.status;
-  $("requestDate").value = job.requestDate || "";
-  $("dueDate").value = job.dueDate || "";
-  $("nextAction").value = job.nextAction || "";
-  $("formTitle").textContent = "Amend IH job " + job.id;
-  $("submitBtn").textContent = "Save changes";
-  $("cancelBtn").hidden = false;
-  $("formPanel").classList.add("editing");
-  $("formPanel").scrollIntoView({behavior:"smooth", block:"start"});
-  $("title").focus();
-}
-async function deleteJob(job) {
-  const { error } = await db.from("ih_jobs").delete().eq("id", job.id);
-  if (error) { showMsg("Delete failed: " + error.message, true); return; }
-  jobs = jobs.filter(j => j.id !== job.id);
-  if (editingId === job.id) resetFormMode();
-  render();
-  showMsg("Job " + job.id + " deleted.", false);
-}
-function render() {
-  refreshFilters();
-  const site = $("siteFilter").value;
-  const owner = $("ownerFilter").value;
-  const category = $("categoryFilter").value;
-  const status = $("statusFilter").value;
-  const search = $("search").value.toLowerCase();
-  const visible = jobs.filter(j =>
-    (!site || j.site === site) &&
-    (!owner || j.owner === owner) &&
-    (!category || j.category === category) &&
-    (!status || j.status === status) &&
-    (!search || (j.id + " " + j.title + " " + (j.reportNo || "")).toLowerCase().includes(search))
-  );
 
-  const counts = ["Pending","Ongoing","Reporting","Completed"];
-  $("total").textContent = visible.length;
-  counts.forEach(s => {
-    $(s.toLowerCase()).textContent = visible.filter(j => j.status === s).length;
+/* ---------- job logic ---------- */
+const ratio=j=>(j.result!==""&&j.result!=null&&+j.nab>0)?(+j.result)/(+j.nab):null;
+const lvl=j=>{const r=ratio(j);return r==null?null:r>=1?"over":r>=.5?"warn":"safe"};
+const done=j=>j.status===DONE;
+const daysLeft=j=>{const d=pd(j.deadline);return d?Math.round((d-today())/864e5):null};
+const overdue=j=>!done(j)&&daysLeft(j)!=null&&daysLeft(j)<0;
+const due30=j=>!done(j)&&daysLeft(j)!=null&&daysLeft(j)>=0&&daysLeft(j)<=30;
+const progN=j=>["sampling","lab","draft","review"].filter(k=>j.checklist?.[k]).length;
+const jid=j=>"IH-"+String(j.no).padStart(3,"0");
+const nextNo=()=>jobs.reduce((m,j)=>Math.max(m,j.no||0),0)+1;
+function normJob(o){
+  return {id:o.id||uid(),no:o.no||nextNo(),title:o.title||"",reportNo:o.reportNo||"",location:o.location||"",category:o.category||CATS[0],
+    pic:o.pic||"",priority:["Normal","High","Critical"].includes(o.priority)?o.priority:"Normal",status:STATUS.includes(o.status)?o.status:"Waiting",
+    requestDate:o.requestDate||iso(today()),deadline:o.deadline||"",result:o.result===""||o.result==null?"":+o.result,unit:o.unit||"",
+    nab:o.nab===""||o.nab==null?"":+o.nab,recur:+o.recur||0,nextAction:o.nextAction||"",notes:o.notes||"",checklist:o.checklist||{},
+    seriesId:o.seriesId||null,cycle:o.cycle||1,controls:o.controls||[],completedAt:o.completedAt||null,reportId:o.reportId||null,source:o.source||null};
+}
+function setStatus(j,st){
+  const was=done(j); j.status=st;
+  if(st===DONE&&!was){
+    j.completedAt=iso(today()); j.checklist={sampling:true,lab:true,draft:true,review:true};
+    if(j.recur>0){
+      j.seriesId=j.seriesId||j.id;
+      if(!jobs.some(x=>x.seriesId===j.seriesId&&x.cycle===j.cycle+1)){
+        const base=j.deadline||iso(today());
+        const n=normJob({...j,id:uid(),no:nextNo(),status:"Waiting",result:"",requestDate:addMonths(base,j.recur-1),deadline:addMonths(base,j.recur),
+          cycle:j.cycle+1,checklist:{},controls:[],completedAt:null,nextAction:"Schedule sampling",reportNo:""});
+        jobs.push(n); toast("Next cycle scheduled: "+fmtD(n.deadline));
+      }
+    }
+  }
+}
+
+/* ---------- filters ---------- */
+function filtered(){
+  const L=$("#fLoc").value,P=$("#fPic").value,C=$("#fCat").value,S=$("#fSt").value,q=$("#fQ").value.trim().toLowerCase();
+  return jobs.filter(j=>(!L||j.location===L)&&(!P||j.pic===P)&&(!C||j.category===C)&&(!S||j.status===S)
+    &&(!q||(j.title+" "+j.reportNo+" "+jid(j)).toLowerCase().includes(q))
+    &&(quick==="all"||(quick==="overdue"&&overdue(j))||(quick==="due30"&&due30(j))||(quick==="over"&&lvl(j)==="over")));
+}
+const uniq=k=>[...new Set(jobs.map(j=>j[k]).filter(Boolean))].sort();
+function fillSel(el,vals,all){const v=el.value;el.innerHTML=`<option value="">${all}</option>`+vals.map(x=>`<option>${esc(x)}</option>`).join("");if(vals.includes(v))el.value=v}
+
+/* ---------- render ---------- */
+function render(){
+  fillSel($("#fLoc"),uniq("location"),"All locations");fillSel($("#fPic"),uniq("pic"),"All people");
+  fillSel($("#fCat"),CATS,"All categories");fillSel($("#fSt"),STATUS,"All statuses");
+  $("#dlLoc").innerHTML=uniq("location").map(x=>`<option value="${esc(x)}">`).join("");
+  $("#dlPic").innerHTML=uniq("pic").map(x=>`<option value="${esc(x)}">`).join("");
+  renderKpis();renderAtt();renderCtl();renderHeat();renderComp();renderTrend();renderReg();
+  persist();
+}
+function renderKpis(){
+  const od=jobs.filter(overdue).length,d30=jobs.filter(due30).length,ov=jobs.filter(j=>lvl(j)==="over").length;
+  const comp=jobs.length?Math.round(100*jobs.filter(j=>!overdue(j)).length/jobs.length):100;
+  const ctlOpen=jobs.filter(j=>lvl(j)==="over"&&!(j.controls||[]).some(c=>c.verif===EFFECTIVE)).length;
+  const k=[["Total jobs",jobs.length,"","all"],["Active",jobs.filter(j=>!done(j)).length,"","all"],["Overdue",od,od?"over":"safe","overdue"],
+    ["Due in 30 days",d30,d30?"warn":"safe","due30"],["Over OEL",ov,ov?"over":"safe","over"],["Completed",jobs.filter(done).length,"safe","all"],
+    ["Deadline compliance",comp+"%",comp>=90?"safe":comp>=70?"warn":"over","all"],["OEL findings not yet controlled",ctlOpen,ctlOpen?"over":"safe","over"]];
+  $("#kpis").innerHTML=k.map(x=>`<div class="kpi ${x[2]}" data-q="${x[3]}"><b>${x[1]}</b><span>${x[0]}</span></div>`).join("");
+  $$("#kpis .kpi").forEach(e=>e.onclick=()=>{setQuick(e.dataset.q);scrollReg()});
+}
+function lvlPill(j){const r=ratio(j);if(r==null)return'<span class="pill">–</span>';
+  return `<span class="pill p-${lvl(j)}">${esc(j.result)} / ${esc(j.nab)} ${esc(j.unit)} · ${Math.round(r*100)}%</span>`}
+function renderAtt(){
+  const items=[];
+  jobs.forEach(j=>{
+    if(overdue(j))items.push({j,t:"over",m:`Overdue ${-daysLeft(j)} days`,s:daysLeft(j)});
+    else if(due30(j))items.push({j,t:"warn",m:`Due in ${daysLeft(j)} days`,s:100+daysLeft(j)});
+    if(lvl(j)==="over")items.push({j,t:"over",m:`Over OEL (${Math.round(ratio(j)*100)}%)`,s:50});
   });
-  $("overdue").textContent = visible.filter(isOverdue).length;
-  $("dueSoon").textContent = visible.filter(j =>
-    isOpen(j) && daysUntil(j.dueDate) >= 0 && daysUntil(j.dueDate) <= 30
-  ).length;
+  items.sort((a,b)=>a.s-b.s);
+  $("#att").innerHTML=items.length?items.map(x=>`<li data-id="${x.j.id}"><span class="pill p-${x.t}">${x.m}</span><span><b>${jid(x.j)}</b> ${esc(x.j.title)} <span class="muted">· ${esc(x.j.location)}</span></span></li>`).join("")
+    :'<li class="muted">Nothing needs attention 🎉</li>';
+  $$("#att li[data-id]").forEach(li=>li.onclick=()=>findInReg(li.dataset.id));
+}
+function renderCtl(){
+  const ov=jobs.filter(j=>lvl(j)==="over");
+  $("#ctlList").innerHTML=ov.length?ov.map(j=>{
+    const cs=(j.controls||[]).slice().sort((a,b)=>LEVELS.indexOf(a.level)-LEVELS.indexOf(b.level)),ok=cs.some(c=>c.verif===EFFECTIVE);
+    return `<div class="ctl" style="border-color:${ok?"var(--safe)":"var(--over)"}"><div class="row" style="justify-content:space-between"><span><b>${jid(j)}</b> ${esc(j.title)} · ${lvlPill(j)}</span>
+    <button class="sm noP ed" data-ctl="${j.id}">+ Add control</button></div>
+    ${cs.length?`<ul>${cs.map(c=>`<li><b>${esc(c.level)}</b>: ${esc(c.action)} — ${esc(c.pic)}, ${fmtD(c.deadline)} · <span class="pill ${c.verif===EFFECTIVE?"p-safe":c.verif==="Not effective"?"p-over":""}">${esc(c.verif)}</span>${c.note?` <span class="muted">(${esc(c.note)})</span>`:""}</li>`).join("")}</ul>`:'<div class="muted" style="font-size:12px">No control plan yet</div>'}</div>`}).join("")
+    :'<p class="muted">No results above the OEL.</p>';
+  $$("#ctlList [data-ctl]").forEach(b=>b.onclick=()=>openCtl(b.dataset.ctl));
+}
+function cellLevel(list){if(!list.length)return null;if(list.some(j=>lvl(j)==="over"))return"over";if(list.some(j=>lvl(j)==="warn"||overdue(j)))return"warn";return"safe"}
+function renderHeat(){
+  const locs=uniq("location"),cats=CATS.filter(c=>jobs.some(j=>j.category===c));
+  if(!locs.length){$("#heat").innerHTML='<tr><td class="muted">No data yet</td></tr>';return}
+  let h=`<tr><th></th>${cats.map(c=>`<th style="font-size:11px;white-space:normal">${esc(c)}</th>`).join("")}</tr>`;
+  locs.forEach(l=>{h+=`<tr><th style="text-align:left">${esc(l)}</th>`+cats.map(c=>{const L=jobs.filter(j=>j.location===l&&j.category===c),v=cellLevel(L);
+    return v?`<td class="c" data-l="${esc(l)}" data-c="${esc(c)}" style="background:var(--${v}-bg);color:var(--${v})">${L.length}</td>`:'<td class="muted">·</td>'}).join("")+"</tr>"});
+  $("#heat").innerHTML=h;
+  $$("#heat td.c").forEach(td=>td.onclick=()=>{$("#fLoc").value=td.dataset.l;$("#fCat").value=td.dataset.c;setQuick("all");scrollReg()});
+}
+function renderComp(){
+  const locs=uniq("location");
+  $("#comp").innerHTML=locs.length?locs.map(l=>{const L=jobs.filter(j=>j.location===l),p=Math.round(100*L.filter(j=>!overdue(j)).length/L.length);
+    const c=p>=90?"var(--safe)":p>=70?"var(--warn)":"var(--over)";
+    return `<div style="margin-bottom:9px"><div class="row" style="justify-content:space-between;font-size:13px"><span>${esc(l)}</span><b>${p}%</b></div><div class="bar"><i style="width:${p}%;background:${c}"></i></div></div>`}).join(""):'<p class="muted">No data yet</p>';
+}
+function renderTrend(){
+  const series={};jobs.forEach(j=>{if(j.seriesId&&ratio(j)!=null)(series[j.seriesId]=series[j.seriesId]||[]).push(j)});
+  const S=Object.values(series).map(a=>a.sort((x,y)=>x.cycle-y.cycle));
+  if(!S.length){$("#trend").innerHTML='<p class="muted">No recurring jobs with measured results yet.</p>';return}
+  const W=760,H=240,pl=44,pr=14,pt=14,pb=30,maxC=Math.max(...S.flatMap(a=>a.map(j=>j.cycle))),maxY=Math.max(120,...S.flatMap(a=>a.map(j=>ratio(j)*100)))*1.08;
+  const x=c=>pl+(maxC<=1?0.5:(c-1)/(maxC-1))*(W-pl-pr),y=v=>pt+(1-v/maxY)*(H-pt-pb);
+  const pal=["#2f6fa3","#d9822b","#2e8b57","#8e44ad","#c0392b","#16a085","#7f8c8d","#b7950b"];
+  let g="";for(let v=0;v<=maxY;v+=50)g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--mute)">${v}%</text>`;
+  for(let c=1;c<=maxC;c++)g+=`<text x="${x(c)}" y="${H-10}" text-anchor="middle" font-size="11" fill="var(--mute)">Cycle ${c}</text>`;
+  g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(100)}" y2="${y(100)}" stroke="var(--over)" stroke-dasharray="6 4" stroke-width="1.5"/>`;
+  let leg="";
+  S.forEach((a,i)=>{const col=pal[i%pal.length];
+    g+=`<polyline fill="none" stroke="${col}" stroke-width="2.2" points="${a.map(j=>x(j.cycle)+","+y(ratio(j)*100)).join(" ")}"/>`;
+    a.forEach(j=>g+=`<circle cx="${x(j.cycle)}" cy="${y(ratio(j)*100)}" r="4" fill="${col}"><title>${esc(a[0].title)} · cycle ${j.cycle}: ${Math.round(ratio(j)*100)}% OEL</title></circle>`);
+    leg+=`<span><i style="background:${col}"></i>${esc(a[0].title)} (${esc(a[0].location)})</span>`});
+  $("#trend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}</svg><div class="legend">${leg}</div>`;
+}
+function renderReg(){
+  const L=filtered();$("#count").textContent=L.length+" of "+jobs.length+" jobs";
+  if(view==="table")regTable(L);else if(view==="kanban")regKanban(L);else regTimeline(L);
+}
+const prBadge=p=>`<span class="pill ${p==="Critical"?"p-over":p==="High"?"p-warn":""}">${p}</span>`;
+function dlBadge(j){const d=daysLeft(j);if(done(j))return fmtD(j.deadline);return `${fmtD(j.deadline)}${overdue(j)?`<br><span class="pill p-over">${-d} days late</span>`:due30(j)?`<br><span class="pill p-warn">${d} days</span>`:""}`}
+function regTable(L){
+  if(!L.length){$("#reg").innerHTML='<p class="muted">No matching jobs.</p>';return}
+  const dis=canEdit?"":"disabled";
+  $("#reg").innerHTML=`<div class="tscroll"><table><tr><th>ID / Title</th><th>Report no.</th><th>Location</th><th>Category</th><th>Person in charge</th><th>Priority</th><th>Deadline</th><th>Status</th><th>Next action</th><th>Progress</th><th>Result vs OEL</th><th class="noP">Actions</th></tr>
+  ${L.sort((a,b)=>(done(a)-done(b))||(done(a)?(b.deadline||"").localeCompare(a.deadline||""):(a.deadline||"9").localeCompare(b.deadline||"9"))).map(j=>`<tr id="r-${j.id}"><td><b>${jid(j)}</b>${j.recur?` <span class="pill" title="Recurs every ${j.recur} months">↻ ${j.cycle}</span>`:""}<br>${esc(j.title)}</td><td>${esc(j.reportNo)||"–"}</td><td>${esc(j.location)}</td><td>${esc(j.category)}</td><td>${esc(j.pic)}</td><td>${prBadge(j.priority)}</td><td>${dlBadge(j)}</td>
+  <td><select data-st="${j.id}" style="min-width:120px" ${dis}>${STATUS.map(s=>`<option ${s===j.status?"selected":""}>${s}</option>`).join("")}</select></td><td>${esc(j.nextAction)||"–"}</td>
+  <td><div class="prog">${["sampling","lab","draft","review"].map(k=>`<i class="${j.checklist?.[k]?"d":""}" title="${k}"></i>`).join("")}</div><span class="muted" style="font-size:11px">${progN(j)}/4</span></td><td>${lvlPill(j)}</td>
+  <td class="noP" style="white-space:nowrap">${j.reportId?`<button class="sm" data-rep="${esc(j.id)}" title="Open the CEM report for this job">📄 Report</button> `:canEdit?`<button class="sm" data-rep="${esc(j.id)}" title="Start a CEM report linked to this job">📝 Start CEM</button> `:""}<span class="ed"><button class="sm" data-ed="${j.id}">Edit</button> ${lvl(j)==="over"?`<button class="sm" data-ctl="${j.id}">Control</button> `:""}<button class="sm" data-del="${j.id}">Delete</button></span></td></tr>`).join("")}</table></div>`;
+  $$("[data-st]").forEach(s=>s.onchange=()=>{setStatus(jobs.find(j=>j.id===s.dataset.st),s.value);render()});
+  $$("[data-ed]").forEach(b=>b.onclick=()=>editJob(b.dataset.ed));
+  $$("[data-rep]").forEach(b=>b.onclick=()=>{const j=jobs.find(x=>x.id===b.dataset.rep);location.href=j.reportId?"cem.html?report="+encodeURIComponent(j.reportId):"cem.html?job="+encodeURIComponent(j.id)});
+  $$("#reg [data-ctl]").forEach(b=>b.onclick=()=>openCtl(b.dataset.ctl));
+  $$("[data-del]").forEach(b=>b.onclick=()=>{const j=jobs.find(x=>x.id===b.dataset.del);confirmBox(`Delete ${jid(j)} — ${j.title}?`,()=>{jobs=jobs.filter(x=>x!==j);render();toast("Deleted")})});
+}
+function regKanban(L){
+  $("#reg").innerHTML=`<div class="kanban">${STATUS.map(s=>`<div class="col" data-col="${s}"><h3>${s} <span class="muted">(${L.filter(j=>j.status===s).length})</span></h3>
+  ${L.filter(j=>j.status===s).map(j=>`<div class="kc" draggable="${canEdit}" data-id="${j.id}"><b>${jid(j)}</b> ${prBadge(j.priority)}<br>${esc(j.title)}<div class="muted" style="font-size:12px">${esc(j.location)} · ${esc(j.pic)}</div><div style="margin-top:4px">${dlBadge(j)} ${ratio(j)!=null?lvlPill(j):""}</div>${j.reportId?`<a href="cem.html?report=${encodeURIComponent(j.reportId)}" style="font-size:12px">📄 Open report</a>`:""}</div>`).join("")}</div>`).join("")}</div>`;
+  if(!canEdit)return;
+  $$(".kc").forEach(c=>{c.ondragstart=e=>e.dataTransfer.setData("text",c.dataset.id);c.ondblclick=()=>editJob(c.dataset.id)});
+  $$(".col").forEach(col=>{col.ondragover=e=>{e.preventDefault();col.classList.add("drag")};col.ondragleave=()=>col.classList.remove("drag");
+    col.ondrop=e=>{e.preventDefault();const j=jobs.find(x=>x.id===e.dataTransfer.getData("text"));if(j){setStatus(j,col.dataset.col);render()}}});
+}
+function regTimeline(L){
+  const D=L.filter(j=>pd(j.deadline));if(!D.length){$("#reg").innerHTML='<p class="muted">No jobs with deadlines.</p>';return}
+  let mn=new Date(Math.min(...D.map(j=>pd(j.requestDate)||pd(j.deadline)),today())),mx=new Date(Math.max(...D.map(j=>pd(j.deadline)),today()));
+  mn.setDate(mn.getDate()-7);mx.setDate(mx.getDate()+7);const span=mx-mn,pos=d=>((d-mn)/span*100);
+  $("#reg").innerHTML=`<div><div class="tlrow"><span></span><div class="row muted" style="justify-content:space-between;font-size:11px"><span>${fmtD(iso(mn))}</span><span>Today</span><span>${fmtD(iso(mx))}</span></div></div>
+  ${D.sort((a,b)=>a.deadline.localeCompare(b.deadline)).map(j=>{const s=pd(j.requestDate)||pd(j.deadline),e=pd(j.deadline);const c=done(j)?"var(--safe)":overdue(j)?"var(--over)":due30(j)?"var(--warn)":"var(--pri2)";
+  return `<div class="tlrow"><span><b>${jid(j)}</b> ${esc(j.title)}</span><div class="tltrack"><div class="tlbar" style="left:${pos(s)}%;width:${Math.max(1,pos(e)-pos(s))}%;background:${c}" title="${fmtD(j.requestDate)} → ${fmtD(j.deadline)} · ${j.status}"></div><div class="tltoday" style="left:${pos(today())}%"></div></div></div>`}).join("")}</div>`;
+}
+function scrollReg(){$("#views").scrollIntoView({behavior:"smooth",block:"start"})}
+function setQuick(q){quick=q;$$("#quick button").forEach(b=>b.classList.toggle("on",b.dataset.q===q));renderReg()}
+function setView(v){view=v;$$("#views button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));renderReg()}
+function findInReg(id){["#fLoc","#fPic","#fCat","#fSt","#fQ"].forEach(s=>$(s).value="");setQuick("all");setView("table");
+  const r=$("#r-"+id);if(r){r.scrollIntoView({behavior:"smooth",block:"center"});r.style.background="var(--warn-bg)";setTimeout(()=>r.style.background="",1800)}}
 
-  const tbody = $("jobRows");
-  tbody.replaceChildren();
-  visible.forEach(j => {
-    const tr = document.createElement("tr");
-    const titleCell = document.createElement("td");
-    const strong = document.createElement("strong");
-    strong.textContent = j.id;
-    titleCell.append(strong, document.createElement("br"), document.createTextNode(j.title));
-    tr.append(titleCell);
-    safeCell(tr, j.reportNo || "—");
-    safeCell(tr, j.site);
-    safeCell(tr, j.category);
-    safeCell(tr, j.owner);
-    safeCell(tr, j.priority);
-    const dueCell = safeCell(tr, j.dueDate);
-    if (isOverdue(j)) {
-      dueCell.className = "overdue";
-      dueCell.title = "Past due date";
-    }
-    const statusCell = document.createElement("td");
-    const badge = document.createElement("span");
-    badge.className = "status " + j.status;
-    badge.textContent = j.status;
-    statusCell.append(badge);
-    tr.append(statusCell);
-    safeCell(tr, j.nextAction);
+/* ---------- job form ---------- */
+const F=$("#jobForm");
+F.category.innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");F.status.innerHTML=STATUS.map(c=>`<option>${c}</option>`).join("");
+function resetForm(){F.reset();editId=null;F.requestDate.value=iso(today());$("#formTitle").textContent="Register a new IH job";$("#bSubmit").textContent="+ Add IH job"}
+function editJob(id){if(!canEdit)return;const j=jobs.find(x=>x.id===id);editId=id;
+  ["title","reportNo","location","category","pic","priority","status","requestDate","deadline","result","unit","nab","recur","nextAction","notes"].forEach(k=>F[k].value=j[k]??"");
+  ["sampling","lab","draft","review"].forEach(k=>F["c_"+k].checked=!!j.checklist?.[k]);
+  $("#formTitle").textContent="Edit "+jid(j);$("#bSubmit").textContent="Save changes";$("#formCard").scrollIntoView({behavior:"smooth"})}
+F.onsubmit=e=>{e.preventDefault();if(!canEdit)return;const fd=Object.fromEntries(new FormData(F));
+  const o={...fd,checklist:{sampling:F.c_sampling.checked,lab:F.c_lab.checked,draft:F.c_draft.checked,review:F.c_review.checked}};
+  ["c_sampling","c_lab","c_draft","c_review"].forEach(k=>delete o[k]);const st=o.status;
+  if(editId){const j=jobs.find(x=>x.id===editId);Object.assign(j,normJob({...j,...o,status:j.status}));setStatus(j,st);toast("Changes saved")}
+  else{const j=normJob({...o,status:"Waiting"});if(j.recur)j.seriesId=j.id;jobs.push(j);setStatus(j,st);toast(jid(j)+" added")}
+  resetForm();render()};
+$("#bCancel").onclick=resetForm;
 
-    const actionCell = document.createElement("td");
-    const wrap = document.createElement("div");
-    wrap.className = "rowactions";
-    const select = document.createElement("select");
-    ["Pending","Ongoing","Reporting","Completed"].forEach(s => select.add(new Option(s,s)));
-    select.value = j.status;
-    select.setAttribute("aria-label","Update status for " + j.id);
-    select.addEventListener("change", async () => {
-      const { error } = await db.from("ih_jobs")
-        .update({ status: select.value, updated_at: new Date().toISOString() })
-        .eq("id", j.id);
-      if (error) {
-        showMsg("Status update failed: " + error.message, true);
-        select.value = j.status;
-        return;
-      }
-      j.status = select.value;
-      render();
-      showMsg("Status updated for " + j.id + ".", false);
-    });
+/* ---------- controls ---------- */
+function openCtl(id){if(!canEdit)return;ctlFor=id;const j=jobs.find(x=>x.id===id);$("#ctlForm").reset();$("#ctlJob").textContent=`${jid(j)} · ${j.title} · ${Math.round(ratio(j)*100)}% OEL`;openM("mCtl")}
+$("#ctlForm").onsubmit=e=>{e.preventDefault();const j=jobs.find(x=>x.id===ctlFor);(j.controls=j.controls||[]).push(Object.fromEntries(new FormData(e.target)));closeM("mCtl");render();toast("Control saved")};
 
-    const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className = "smallbtn";
-    editBtn.textContent = "Edit";
-    editBtn.setAttribute("aria-label","Edit " + j.id);
-    editBtn.addEventListener("click", () => startEdit(j));
+/* ---------- export / import ---------- */
+const COLS=[["ID","_id"],["Job title","title"],["Report number","reportNo"],["Location","location"],["IH category","category"],["Person in charge","pic"],["Priority","priority"],["Status","status"],
+  ["Request date","requestDate"],["Deadline","deadline"],["Measured result","result"],["Unit","unit"],["OEL","nab"],["Recurring (months)","recur"],["Next action","nextAction"],["Notes","notes"],["Progress (0-4)","_prog"],["% OEL","_pct"]];
+const rowOf=j=>Object.fromEntries(COLS.map(([h,k])=>[h,k==="_id"?jid(j):k==="_prog"?progN(j):k==="_pct"?(ratio(j)==null?"":Math.round(ratio(j)*100)):j[k]]));
+function fromRow(r){const o={};COLS.forEach(([h,k])=>{if(!k.startsWith("_")&&r[h]!==undefined)o[k]=r[h]});
+  ["requestDate","deadline"].forEach(k=>{const v=o[k];if(v instanceof Date)o[k]=iso(v);else if(typeof v==="number"&&window.XLSX){const d=XLSX.SSF.parse_date_code(v);o[k]=`${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`}});
+  return o.title?normJob(o):null}
+function download(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+$("#bExp").onclick=()=>{if(!window.XLSX){showCsv();return toast("Excel unavailable — use CSV")}
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(filtered().map(rowOf)),"IH Register");
+  const ctl=[];jobs.forEach(j=>(j.controls||[]).forEach(c=>ctl.push({ID:jid(j),Title:j.title,Level:c.level,Action:c.action,PIC:c.pic,"Implementation deadline":c.deadline,"Verification status":c.verif,Notes:c.note})));
+  if(ctl.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(ctl),"Controls");
+  XLSX.writeFile(wb,`IH-register-${iso(today())}.xlsx`)};
+const csvCell=v=>{v=String(v??"");return/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+$("#bTpl").onclick=()=>{const h=COLS.filter(c=>!c[1].startsWith("_")).map(c=>c[0]);
+  const ex=["Noise survey compressor area","RPT-001","Plant A","Noise","Ahmad","High","Waiting",iso(today()),addMonths(iso(today()),1),"","dBA","85","12","Schedule sampling",""];
+  download(new Blob(["﻿"+[h,ex].map(r=>r.map(csvCell).join(",")).join("\n")],{type:"text/csv"}),"IH-register-template.csv")};
+$("#fileImp").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{let rows;
+  if(window.XLSX){const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""})}else rows=parseCsv(await f.text());
+  importRows(rows)}catch(err){toast("Could not read the file")}e.target.value=""};
+function importRows(rows){if(!canEdit)return;let n=0;rows.forEach(r=>{const j=fromRow(r);if(j){j.no=nextNo();if(j.recur)j.seriesId=j.id;jobs.push(j);n++}});render();toast(n+" jobs imported")}
+function toCsv(L){const h=COLS.map(c=>c[0]);return[h.join(",")].concat(L.map(j=>{const r=rowOf(j);return h.map(k=>csvCell(r[k])).join(",")})).join("\n")}
+function parseCsv(t){const out=[];let row=[],cell="",q=false;t=t.replace(/^﻿/,"");
+  for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'){if(t[i+1]=='"'){cell+='"';i++}else q=false}else cell+=c}
+    else if(c=='"')q=true;else if(c==","){row.push(cell);cell=""}else if(c=="\n"||c=="\r"){if(c=="\r"&&t[i+1]=="\n")i++;row.push(cell);out.push(row);row=[];cell=""}else cell+=c}
+  if(cell||row.length){row.push(cell);out.push(row)}
+  const h=out.shift()||[];return out.filter(r=>r.some(x=>x)).map(r=>Object.fromEntries(h.map((k,i)=>[k.trim(),r[i]??""])))}
+function showCsv(){$("#csvPanel").style.display="block";$("#csvBox").value=toCsv(filtered())}
+$("#bCsv").onclick=showCsv;$("#bCsvClose").onclick=()=>$("#csvPanel").style.display="none";
+$("#bCsvCopy").onclick=async()=>{try{await navigator.clipboard.writeText($("#csvBox").value);toast("Copied")}catch(e){$("#csvBox").select();toast("Press Ctrl+C to copy")}};
+$("#bCsvImp").onclick=()=>importRows(parseCsv($("#csvBox").value));
 
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "smallbtn danger";
-    delBtn.textContent = "Delete";
-    delBtn.setAttribute("aria-label","Delete " + j.id);
-    let armTimer;
-    delBtn.addEventListener("click", () => {
-      if (delBtn.classList.contains("armed")) {
-        clearTimeout(armTimer);
-        deleteJob(j);
-      } else {
-        delBtn.classList.add("armed");
-        delBtn.textContent = "Click again to confirm";
-        armTimer = setTimeout(() => {
-          delBtn.classList.remove("armed");
-          delBtn.textContent = "Delete";
-        }, 4000);
-      }
-    });
-    wrap.append(select, editBtn, delBtn);
-    actionCell.append(wrap);
-    tr.append(actionCell);
-    tbody.append(tr);
-  });
-  $("empty").hidden = visible.length > 0;
+/* ---------- authorised users (admin) ---------- */
+async function loadUsers(){
+  if(role!=="admin")return;
+  const {data,error}=await sb.from("app_users").select("*").order("email");
+  if(error){$("#usersT").innerHTML=`<tr><td class="muted">${esc(error.message)}</td></tr>`;return}
+  $("#usersT").innerHTML=`<tr><th>Email</th><th>Name</th><th>Role</th><th></th></tr>`+data.map(u=>`<tr><td>${esc(u.email)}</td><td>${esc(u.name)||"–"}</td>
+    <td><select data-role="${esc(u.email)}" ${u.email===me?"disabled":""}>${["viewer","editor","admin"].map(r=>`<option value="${r}" ${r===u.role?"selected":""}>${r[0].toUpperCase()+r.slice(1)}</option>`).join("")}</select></td>
+    <td>${u.email===me?'<span class="muted">you</span>':`<button class="sm" data-rm="${esc(u.email)}">Remove</button>`}</td></tr>`).join("");
+  $$("[data-role]").forEach(s=>s.onchange=async()=>{const {error}=await sb.from("app_users").update({role:s.value}).eq("email",s.dataset.role);toast(error?error.message:"Role updated");loadUsers()});
+  $$("[data-rm]").forEach(b=>b.onclick=()=>confirmBox(`Remove access for ${b.dataset.rm}?`,async()=>{const {error}=await sb.from("app_users").delete().eq("email",b.dataset.rm);toast(error?error.message:"Access removed");loadUsers()}));
+}
+$("#userForm").onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
+  const {error}=await sb.from("app_users").upsert({email:toEmail(f.email),name:f.name||null,role:f.role});
+  toast(error?error.message:"User saved — create their login in Supabase if they don't have one");if(!error)e.target.reset();loadUsers()};
+
+$("#bBackup").onclick=async()=>{try{const [{data:J,error:e1},{data:R,error:e2},{data:U}]=await Promise.all([sb.from("ih_jobs").select("*"),sb.from("cem_reports").select("*"),sb.from("app_users").select("*")]);
+  if(e1||e2)throw e1||e2;const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),by:me,jobs:J,cemReports:R,users:U},null,1)],{type:"application/json"});
+  download(blob,`ihcc-backup-${iso(today())}.json`);toast(`Backup downloaded: ${J.length} jobs, ${R.length} reports`)}catch(e){toast("Backup failed: "+(e.message||e))}};
+
+/* ---------- sample data (admin) ---------- */
+function sampleData(){
+  const t=iso(today()),D=n=>{const d=today();d.setDate(d.getDate()+n);return iso(d)};
+  const raw=[
+   ["Noise survey – compressor area","Plant Shah Alam","Noise","Ahmad","Critical","In progress",-40,-5,92,"dBA",85,6,"Waiting for dosimeter results"],
+   ["Lighting survey – control room","Plant Shah Alam","Lighting","Siti","Normal","Completed",-60,-20,"","lux",300,0,""],
+   ["Wood dust exposure – finishing line","Plant Pasir Gudang","Dust / particulates","Raj","High","Reporting",-30,12,3.1,"mg/m³",5,12,"Finalise draft"],
+   ["Toluene – spray painting booth","Plant Pasir Gudang","Chemicals (VOC / hazardous)","Raj","Critical","In progress",-20,8,62,"ppm",50,6,"Review LEV performance"],
+   ["Heat stress – boiler house","Terminal Bintulu","Heat stress","Mei Ling","High","Waiting",-5,25,"","°C WBGT",28,12,"Schedule sampling"],
+   ["Hand-arm vibration – grinders","Terminal Bintulu","Vibration","Mei Ling","Normal","Waiting",-2,45,"","m/s²",5,0,"Rent vibration meter"],
+   ["Ergonomic survey – warehouse","Warehouse Penang","Ergonomics","Farah","Normal","In progress",-15,-3,"","score",7,0,"Complete REBA"],
+   ["Bioaerosol – AHU rooms","HQ Kuala Lumpur","Biological","Siti","Normal","Completed",-50,-25,180,"CFU/m³",700,0,""]];
+  jobs=raw.map((r,i)=>normJob({id:uid(),no:i+1,title:r[0],reportNo:"RPT-2026-"+String(i+1).padStart(3,"0"),location:r[1],category:r[2],pic:r[3],priority:r[4],status:r[5],
+    requestDate:D(r[6]),deadline:D(r[7]),result:r[8],unit:r[9],nab:r[10],recur:r[11],nextAction:r[12],
+    checklist:r[5]==="Completed"?{sampling:true,lab:true,draft:true,review:true}:r[5]==="Reporting"?{sampling:true,lab:true,draft:true}:r[5]==="In progress"?{sampling:true}:{}}));
+  [[0,[78,84,88]],[2,[52,58,61]],[3,[96,110,118]],[4,[90,95,98]]].forEach(([i,vals])=>{const b=jobs[i];b.seriesId=b.id;b.cycle=vals.length+1;
+    vals.forEach((v,k)=>{const back=(vals.length-k)*b.recur;jobs.push(normJob({...b,id:uid(),no:nextNo(),status:"Completed",cycle:k+1,result:+(b.nab*v/100).toFixed(2),
+      requestDate:addMonths(b.requestDate,-back),deadline:addMonths(b.deadline,-back),checklist:{sampling:true,lab:true,draft:true,review:true},
+      nextAction:"",controls:[],reportNo:b.reportNo+"-C"+(k+1),completedAt:t}))})});
+  jobs[0].controls=[{level:"Engineering controls",action:"Install acoustic enclosure on compressor #2",pic:"Maintenance",deadline:D(20),verif:"Planned",note:""},
+    {level:"PPE",action:"Mandatory NRR 27 earmuffs in red zone",pic:"HSE",deadline:D(-10),verif:"Implemented",note:"Weekly compliance audit"}];
+  jobs[3].controls=[{level:"Substitution",action:"Trial water-based paint",pic:"Production",deadline:D(60),verif:"Planned",note:""}];
+  sites={"Plant Shah Alam":{x:22,y:60},"HQ Kuala Lumpur":{x:26,y:52},"Plant Pasir Gudang":{x:40,y:82},"Terminal Bintulu":{x:76,y:40},"Warehouse Penang":{x:14,y:18}};
+  render();toast("Sample data loaded");
 }
 
-$("signOutBtn").addEventListener("click", async () => {
-  const { error } = await db.auth.signOut();
-  if (error) showMsg("Sign out failed: " + error.message, true);
-});
-
-
-$("loginForm").addEventListener("submit", async event => {
-  event.preventDefault();
-
-  const button = $("loginBtn");
-  button.disabled = true;
-  showLoginMsg("Signing in…");
-
-  try {
-    const { data, error } = await db.auth.signInWithPassword({
-      email: $("loginEmail").value.trim(),
-      password: $("loginPassword").value
-    });
-
-    if (error) {
-      showLoginMsg("Sign-in failed: " + error.message, true);
-      return;
-    }
-
-    if (data.session) {
-      showLoginMsg("Login successful!");
-      await refreshAuth();
-    }
-  } catch (err) {
-    console.error("Login error:", err);
-    showLoginMsg("Login error: " + err.message, true);
-  } finally {
-    button.disabled = false;
-  }
-});
-
-
-$("jobForm").addEventListener("submit", async event => {
-  event.preventDefault();
-
-  const data = {
-    title: $("title").value.trim(),
-    reportNo: $("reportNo").value.trim(),
-    site: $("site").value.trim(),
-    category: $("category").value,
-    owner: $("owner").value.trim(),
-    priority: $("priority").value,
-    status: $("jobStatus").value,
-    requestDate: $("requestDate").value,
-    dueDate: $("dueDate").value,
-    nextAction: $("nextAction").value.trim()
-  };
-
-  const submit = $("submitBtn");
-  submit.disabled = true;
-
-  try {
-    if (editingId) {
-      const existing = jobs.find(j => j.id === editingId);
-      if (!existing) {
-        resetFormMode();
-        return;
-      }
-
-      
-const updated = { ...existing, ...data };
-
-const { data: savedJob, error } = await db
-  .from("ih_jobs")
-  .update(toDatabase(updated))
-  .eq("id", editingId)
-  .select()
-  .maybeSingle();
-
-if (error) throw error;
-
-if (!savedJob) {
-  throw new Error(
-    "No job was updated. Check the job ID and Supabase UPDATE policy."
-  );
+/* ---------- authentication ---------- */
+function loginMsg(m){$("#loginErr").textContent=m}
+async function afterSignIn(user){
+  me=(user.email||"").toLowerCase();
+  const {data,error}=await sb.from("app_users").select("role,name").eq("email",me).maybeSingle();
+  if(error){await sb.auth.signOut();showLogin(/does not exist|relation|schema cache/i.test(error.message)?"Logged in, but the database isn't set up yet. Run setup.sql in Supabase → SQL Editor, then try again.":"Database error: "+error.message);return}
+  if(!data){await sb.auth.signOut();showLogin(`Logged in as ${me}, but this email isn't on the authorised list. In setup.sql the admin line must use exactly this email; fix it and run the last line again in SQL Editor.`);return}
+  role=data.role;canEdit=role==="admin"||role==="editor";
+  document.body.classList.add("authed");document.body.classList.toggle("ro",!canEdit);document.body.classList.toggle("admin",role==="admin");
+  $("#roBanner").style.display=canEdit?"none":"block";
+  $("#who").textContent=(data.name||me)+" · "+role;
+  closeM("mLogin");await loadAll();loadUsers();subscribe();
 }
-      jobs = jobs.map(j => j.id === editingId ? updated : j);
-      const id = editingId;
-      resetFormMode();
-      render();
-      showMsg("Job " + id + " updated in the cloud.", false);
-    } else {
-      const job = {
-        id: "IH-" + String(Date.now()).slice(-8),
-        ...data
-      };
+function showLogin(msg){document.body.classList.remove("authed","admin","ro");jobs=[];snap={};loginMsg(msg||"");openM("mLogin");setTimeout(()=>$("#lu").focus(),50)}
+$("#loginForm").onsubmit=async e=>{e.preventDefault();if(!sb)return;$("#bLogin").disabled=true;loginMsg("");
+  const {data,error}=await sb.auth.signInWithPassword({email:toEmail($("#lu").value),password:$("#lp").value});
+  $("#bLogin").disabled=false;$("#lp").value="";
+  if(error){const m=(error.message||"").toLowerCase();
+    loginMsg(/invalid login|invalid credentials/.test(m)?`Wrong username or password. (Trying ${toEmail($("#lu").value||"")}. That user must exist in Supabase → Authentication → Users.)`
+      :/email not confirmed/.test(m)?"This user isn't confirmed. In Supabase → Authentication → Users, open the user and confirm them (or recreate with “Auto Confirm User” ticked)."
+      :/fetch|network|failed to/.test(m)?"Can't reach Supabase. Check the Project URL in config.js and that the project isn't paused."
+      :/api key|apikey|jwt|invalid key/.test(m)?"Supabase rejected the key in config.js. Copy the anon public / publishable key again (no spaces)."
+      :"Login failed: "+error.message);return}
+  afterSignIn(data.user)};
+$("#bOut").onclick=async()=>{await saving;sb.removeAllChannels();await sb.auth.signOut();showLogin()};
 
-      const { data: inserted, error } = await db
-        .from("ih_jobs")
-        .insert(toDatabase(job))
-        .select()
-        .single();
+/* ---------- top bar ---------- */
+$("#bDemo").onclick=()=>confirmBox("Replace ALL jobs in the database with sample data? This cannot be undone.",sampleData);
+$("#bPresent").onclick=()=>{document.body.classList.toggle("present");$("#bPresent").classList.toggle("on")};
+$("#bTheme").onclick=()=>{const d=document.documentElement,n=d.dataset.theme==="dark"?"":"dark";d.dataset.theme=n;local.set("ihcc_theme",n)};
+$$("#views button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
+$$("#quick button").forEach(b=>b.onclick=()=>setQuick(b.dataset.q));
+["#fLoc","#fPic","#fCat","#fSt"].forEach(s=>$(s).onchange=renderReg);$("#fQ").oninput=renderReg;
 
-      if (error) throw error;
-
-      jobs.unshift(toApp(inserted));
-      clearFilters();
-      resetFormMode();
-      render();
-      showMsg("Job " + job.id + " added to the cloud register.", false);
-    }
-  } catch (error) {
-    console.error("Save job error:", error);
-    showMsg("Save failed: " + error.message, true);
-  } finally {
-    submit.disabled = false;
-  }
-});
-
-$("cancelBtn").addEventListener("click", resetFormMode);
-["siteFilter","ownerFilter","categoryFilter","statusFilter","search"]
-  .forEach(id => $(id).addEventListener("input", render));
-$("exportBtn").addEventListener("click", () => {
-  const fields = ["id","reportNo","title","site","category","owner","priority","status","requestDate","dueDate","nextAction"];
-  const quote = v => '"' + String(v ?? "").replace(/"/g,'""') + '"';
-  const csv = [fields.join(","), ...jobs.map(j => fields.map(f => quote(j[f])).join(","))].join("\r\n");
-  const blob = new Blob(["\uFEFF" + csv],{type:"text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "corporate-ih-jobs.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-async function showApplication(session) {
-  $("loginPanel").hidden = !!session;
-  $("appShell").hidden = !session;
-  if (!session) return;
-  try {
-  await loadJobs();
-  startJobSync();
-  $("requestDate").value = today();
-} catch (error) {
-    showMsg("Could not load jobs: " + error.message, true);
-  }
-}
-db.auth.onAuthStateChange((_event, session) => {
-  // Defer the data request so it does not run inside the auth callback.
-  setTimeout(() => showApplication(session), 0);
-});
-db.auth.getSession().then(({ data, error }) => {
-  if (error) showLoginMsg(error.message, true);
-  showApplication(data?.session || null);
-});
+/* ---------- start ---------- */
+document.documentElement.dataset.theme=local.get("ihcc_theme","");
+$("#hdrDate").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+resetForm();
+function setupProblem(){const C=window.IHCC_CONFIG,u=String((C&&C.SUPABASE_URL)||"").trim(),k=String((C&&C.SUPABASE_ANON_KEY)||"").trim();
+  if(!C)return"config.js did not load. Either it's missing from the site, or it has a typing mistake (a missing quote \" or comma). Re-upload it, or compare it with the original.";
+  if(!u||/YOUR-PROJECT/i.test(u))return"config.js still has the placeholder Project URL. Paste your Supabase Project URL (https://xxxx.supabase.co) and upload config.js again.";
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)\/?$/i.test(u))return`The Project URL in config.js looks wrong: “${u}”. It should look like https://abcdefgh.supabase.co, with nothing after .co.`;
+  if(!k||/YOUR-ANON/i.test(k))return"config.js still has the placeholder key. Paste the anon public key (starts with eyJ…) or the publishable key (starts with sb_publishable_…).";
+  if(/^sb_secret_/i.test(k)||/service_role/i.test(atobSafe(k)))return"config.js contains the SECRET / service_role key. Remove it now, and use the anon public or publishable key instead.";
+  if(!/^eyJ/.test(k)&&!/^sb_publishable_/.test(k))return`The key in config.js doesn't look right (it starts with “${k.slice(0,8)}…”). Use the anon public key (eyJ…) or the publishable key (sb_publishable_…).`;
+  if(!window.supabase)return"Couldn't load the Supabase library from the internet. Check your connection, turn off any ad/script blocker for this site, then refresh.";
+  return""}
+function atobSafe(k){try{return atob(k.split(".")[1].replace(/-/g,"+").replace(/_/g,"/"))}catch(e){return""}}
+(async()=>{
+  const prob=setupProblem();
+  if(prob){showLogin("Setup needed: "+prob);$("#bLogin").disabled=true;return}
+  sb=window.supabase.createClient(CFG.SUPABASE_URL.trim().replace(/\/$/,""),CFG.SUPABASE_ANON_KEY.trim());
+  try{const {data:{session}}=await sb.auth.getSession();if(session)afterSignIn(session.user);else showLogin()}
+  catch(e){showLogin("Can't reach Supabase: "+(e.message||e)+". Check the Project URL in config.js, and that the project isn't paused (supabase.com → your project → Resume).")}
+})();
 </script>
 </body>
 </html>
