@@ -50,6 +50,7 @@ function wordFromBlocks(B,meta){
   const out=[];
   for(const b of B){
     if(b.t==="cover2"){out.push(...coverWord(D,b.c,meta.logo,run))}
+    else if(b.t==="photos"){const runs=[];(b.ids||[]).forEach(id=>{const x=meta.media&&meta.media.photos[id];if(!x)return;const k=Math.min(200/x.w,150/x.h,1);runs.push(new D.ImageRun({type:/png/i.test(x.type)?"png":"jpg",data:new Uint8Array(x.data),transformation:{width:Math.round(x.w*k),height:Math.round(x.h*k)}}),new D.TextRun({text:"  "}))});if(runs.length)out.push(new D.Paragraph({spacing:{after:160},children:runs}))}
     else if(b.t==="appx"){out.push(new D.Paragraph({children:[new D.PageBreak()]}),new D.Paragraph({heading:D.HeadingLevel.HEADING_1,alignment:D.AlignmentType.CENTER,spacing:{before:3600,after:200},children:[run(`APPENDIX ${b.L}: ${b.T}`,{size:30,bold:true,color:NAVY})]}));
       const ims=(meta.media&&meta.media.appx[b.L])||[];if(!ims.length)out.push(P("(No document attached)",{center:true,color:"6B7280"}));
       ims.forEach(x=>{if(x.err){out.push(P(x.err,{color:"C0392B"}));return}const s=Math.min(600/x.w,860/x.h,1);
@@ -87,6 +88,7 @@ async function previewBlocks(B,meta,info){const w=window.open("","_blank");if(!w
   const lg=info?await getLogo(info):null,lu=lg?URL.createObjectURL(new Blob([lg.data],{type:lg.type})):"";const M=await prepareMedia(B);
   const h=[];for(const b of B){
     if(b.t==="cover2"){h.push(coverHtml(b.c,lu));continue}
+    if(b.t==="photos"){h.push(`<div>${(b.ids||[]).map(id=>M.photos[id]?`<img src="${URL.createObjectURL(new Blob([M.photos[id].data],{type:M.photos[id].type}))}" style="max-width:200px;max-height:150px;margin:0 8px 8px 0">`:"").join("")}</div>`);continue}
     if(b.t==="appx"){h.push(`<div class="pb"></div><h1 style="text-align:center;border:none;margin-top:300px">APPENDIX ${esc(b.L)}: ${esc(b.T)}</h1>`);const ims=M.appx[b.L]||[];if(!ims.length)h.push(`<p style="text-align:center;color:#6B7280">(No document attached)</p>`);
       ims.forEach(x=>h.push(x.err?`<p style="color:#C0392B">${esc(x.err)}</p>`:`<div class="pb"></div><img src="${URL.createObjectURL(new Blob([x.data],{type:x.type}))}" style="max-width:100%">`));continue}
     if(b.t==="table"&&b.photos){h.push(`${b.cap?`<div class="cap">${esc(b.cap)}</div>`:""}<table><thead><tr>${b.head.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead>${b.rows.map((r,ri)=>`<tr>${r.map((c,ci)=>`<td>${ci===b.photoCol?(b.photos[ri]||[]).map(id=>M.photos[id]?`<img src="${URL.createObjectURL(new Blob([M.photos[id].data],{type:M.photos[id].type}))}" style="max-width:110px;max-height:80px;display:block;margin:2px 0">`:"").join(""):esc(c).replace(/\n/g,"<br>")}</td>`).join("")}</tr>`).join("")}</table>`);continue}
@@ -177,7 +179,7 @@ async function imgOf(fl){if(/png|jpe?g/i.test(fl.type)){const bmp=await createIm
   const blob=await new Promise(r=>c.toBlob(r,"image/png"));return{type:"image/png",data:await blob.arrayBuffer(),w:c.width,h:c.height}}
 /* Load equipment photos and appendix files used by a block model (for Word / preview) */
 async function prepareMedia(B){const M={photos:{},appx:{}};
-  for(const b of B){if(b.photos)for(const ids of b.photos)for(const id of ids||[]){if(M.photos[id])continue;const p=await fileDB.get("photo:"+id).catch(()=>null);if(p)M.photos[id]=p}
+  for(const b of B){if(b.t==="photos")b.photos=[b.ids];if(b.photos)for(const ids of b.photos)for(const id of ids||[]){if(M.photos[id])continue;const p=await fileDB.get("photo:"+id).catch(()=>null);if(p)M.photos[id]=p}
     if(b.t==="appx"){const out=[];for(const f of b.files||[]){const fl=await fileDB.get("file:"+f.id).catch(()=>null);if(!fl){out.push({err:`${f.name}: file not found on this device`});continue}
       try{if(/pdf/i.test(fl.type)||/\.pdf$/i.test(fl.name)){toast(`Adding ${f.name}…`,1500);(await pdfPagesAsPng(fl.data)).forEach(x=>out.push(x))}else out.push(await imgOf(fl))}
       catch(e){console.error(e);out.push({err:`Could not attach ${f.name}: ${e.message||e}`})}}M.appx[b.L]=out}}
@@ -248,14 +250,22 @@ function downloadSection(el,o){
 const pick=(v,arr)=>arr[(v||0)%arr.length];
 const fixTxt=s=>String(s).replace(/(^|[^.])\.\.(?!\.)/g,"$1.").replace(/\s+([,.;])/g,"$1").replace(/ {2,}/g," ").trim();
 function textOfGen(TEXTS,st,k,a){if(st.text[k]!=null)return st.text[k];const t=TEXTS.find(x=>x[0]===k);return t?fixTxt(t[2](a,(st.textVar||{})[k]||0)):""}
-function textsUI(el,TEXTS,getSt,getA,save){const st=getSt();
+function textsUI(el,TEXTS,getSt,getA,save,photoKeys=["rec"]){const st=getSt();st.textPhotos=st.textPhotos||{};
   el.innerHTML=`<p class="muted" style="margin:0 0 10px;font-size:13px">Written from your results, the limits and the existing controls, the way a senior hygiene technician / assessor would. Edit any section; “Rewrite” rebuilds it from the latest data with new wording.</p>`+
-   TEXTS.map(([k,t])=>`<div class="tx" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><label style="margin:0;font-weight:600;color:var(--ink)">${esc(t)}</label><button class="sm noP" data-txr="${k}">Rewrite</button></div><textarea data-tx="${k}"></textarea></div>`).join("")+
+   TEXTS.map(([k,t])=>`<div class="tx" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><label style="margin:0;font-weight:600;color:var(--ink)">${esc(t)}</label><button class="sm noP" data-txr="${k}">Rewrite</button></div><textarea data-tx="${k}"></textarea>${photoKeys.includes(k)?`<div data-tph="${k}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px"></div>`:""}</div>`).join("")+
    `<button class="noP" id="bRegen">Rewrite all sections from results</button>`;
   const a=getA();TEXTS.forEach(([k])=>{const ta=el.querySelector(`[data-tx="${k}"]`);ta.value=textOfGen(TEXTS,st,k,a);ta.style.height=Math.min(420,Math.max(110,ta.value.length/4))+"px";ta.oninput=()=>{getSt().text[k]=ta.value;save()}});
   el.querySelectorAll("[data-txr]").forEach(b=>b.onclick=()=>{const s=getSt(),k=b.dataset.txr,ta=el.querySelector(`[data-tx="${k}"]`),before=ta.value;
     s.textVar=s.textVar||{};s.textVar[k]=(s.textVar[k]||0)+1;delete s.text[k];save();ta.value=textOfGen(TEXTS,s,k,getA());
     ta.style.transition="background .6s";ta.style.background="#fff6d6";setTimeout(()=>ta.style.background="",900);
     toast(ta.value===before?"Already up to date with your latest results":"Rewritten from your latest results (new wording)")});
+  el.querySelectorAll("[data-tph]").forEach(box=>textPhotos(box,box.dataset.tph,getSt,save));
   el.querySelector("#bRegen").onclick=()=>{const s=getSt();s.textVar=s.textVar||{};TEXTS.forEach(([k])=>s.textVar[k]=(s.textVar[k]||0)+1);s.text={};save();textsUI(el,TEXTS,getSt,getA,save);toast("All sections rewritten from your latest results")}}
+/* pictures attached under a report text section (e.g. recommendations) */
+function textPhotos(box,k,getSt,save){const st=getSt();st.textPhotos=st.textPhotos||{};const L=st.textPhotos[k]=st.textPhotos[k]||[];
+  box.innerHTML=L.map(pid=>`<div style="position:relative;width:118px;height:88px;border:1px solid var(--line);border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center"><img data-tp="${pid}" style="max-width:110px;max-height:80px;object-fit:contain"><button class="sm noP" data-tpdel="${pid}" style="position:absolute;top:-9px;right:-9px;border-radius:50%;padding:0 6px">✕</button></div>`).join("")+
+   `<label class="filebtn noP" style="border:1.5px dashed var(--pri);color:var(--pri)">+ Add picture<input type="file" accept="image/*" multiple></label><span class="muted noP" style="font-size:12px">Pictures appear below this section in the report (e.g. example controls).</span>`;
+  box.querySelectorAll("[data-tp]").forEach(async img=>{img.src=await photoURL(img.dataset.tp)});
+  box.querySelector("input").onchange=async e=>{try{for(const fl of e.target.files){const p=await shrinkImage(fl,1200),id=uid();await fileDB.put("photo:"+id,p);L.push(id)}}catch(err){toast("Could not read that image")}save();textPhotos(box,k,getSt,save)};
+  box.querySelectorAll("[data-tpdel]").forEach(b=>b.onclick=()=>{st.textPhotos[k]=L.filter(x=>x!==b.dataset.tpdel);save();textPhotos(box,k,getSt,save)})}
 function textsSoft(el,TEXTS,st,a){TEXTS.forEach(([k])=>{const ta=el.querySelector(`[data-tx="${k}"]`);if(ta&&st.text[k]==null&&document.activeElement!==ta)ta.value=textOfGen(TEXTS,st,k,a)})}

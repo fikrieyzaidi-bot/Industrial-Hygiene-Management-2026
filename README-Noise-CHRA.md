@@ -60,3 +60,9 @@ The original `index.html` (before the Noise/CHRA links were added) is kept in `_
 Each section is written from your data and results in a senior hygiene technician / assessor voice. Each has its own **Rewrite** button, which rebuilds the section from the latest data with new wording. **Rewrite all sections from results** resets every section. Text you edit is kept; untouched sections follow the data automatically.
 - **Noise:** Executive summary, 1.1 Background, 5.3.2 SEG selection, 7.1 Area noise, 7.2 Personal noise (per SEG, linked to the measured source levels), 7.3.5 Adequacy of existing controls, 8.0 Recommendations overview, 9.0 Conclusion.
 - **CHRA:** Executive summary, 4.1 Hazard, 4.2 Exposure, 4.3 Risk, 4.4.1 Technical controls, 4.4.2 Organisational controls, 4.4.3 Emergency response, 5.4 Exposure monitoring, 5.5 Medical surveillance, 6.0 Conclusion.
+
+## Update — dashboard & recommendation pictures
+- The dashboard is renamed **Industrial Hygiene System Monitoring**.
+- **Total jobs, Active and Completed** count unique report numbers. A Noise report saves one job per SEG but counts as one report. The register shows "x of y jobs · n reports".
+- The **📄 Report** button opens the right module: CEM → `cem.html`, Noise jobs → `noise.html`, CHRA jobs → `chra.html`. "📝 Start CEM" remains only for jobs with no report yet.
+- **+ Add picture** under the recommendations: CEM 7.1 Action to Be Taken, Noise 8.0 Recommendations, CHRA 5.0 Recommendations (new text section). Pictures print below the text in Word and PDF.

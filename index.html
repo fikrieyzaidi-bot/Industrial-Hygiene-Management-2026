@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="IH Control">
-<title>Corporate IH Control Center</title>
+<title>Industrial Hygiene System Monitoring</title>
 <script>document.write('<script src="config.js?v='+Date.now()+'"><\/script>')</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -116,7 +116,7 @@ body.present{font-size:16px}
 
 <div class="wrap">
 <header>
-  <h1>Corporate IH Control Center</h1>
+  <h1>Industrial Hygiene System Monitoring</h1>
   <p>Industrial Hygiene job management · Multi-site overview · <span id="hdrDate"></span></p>
 </header>
 <div class="banner" id="roBanner" style="display:none">You have view-only access. Ask an admin if you need to edit.</div>
@@ -248,7 +248,7 @@ body.present{font-size:16px}
 
 <!-- Login -->
 <div class="modal" id="mLogin"><div class="box" style="max-width:360px">
-  <h2 style="margin:0">Log in</h2><p class="muted" style="margin:2px 0 14px">Corporate IH Control Center</p>
+  <h2 style="margin:0">Log in</h2><p class="muted" style="margin:2px 0 14px">Industrial Hygiene System Monitoring</p>
   <form id="loginForm">
     <label>Username or email</label><input id="lu" autocomplete="username" required>
     <label style="margin-top:8px">Password</label><input id="lp" type="password" autocomplete="current-password" required>
@@ -383,12 +383,18 @@ function render(){
   renderKpis();renderAtt();renderCtl();renderHeat();renderComp();renderTrend();renderReg();
   persist();
 }
+/* one report (e.g. a Noise report saving one job per SEG) counts once; jobs without a report no. count individually */
+const repCount=L=>new Set(L.map(j=>String(j.reportNo||"").trim().toUpperCase()||("#"+j.id))).size;
+/* which report module a job belongs to */
+const modOf=j=>j.source==="noise"||/^nra-/.test(j.id)?"noise":j.source==="chra"||/^chra-/.test(j.id)?"chra":"cem";
+const repURL=j=>{const m=modOf(j);return m==="cem"?(j.reportId?"cem.html?report="+encodeURIComponent(j.reportId):"cem.html?job="+encodeURIComponent(j.id)):m+".html?job="+encodeURIComponent(j.id)};
+const repBtn=j=>{const m=modOf(j);return (m!=="cem"||j.reportId)?`<button class="sm" data-rep="${esc(j.id)}" title="Open the report for this job">📄 Report</button> `:canEdit?`<button class="sm" data-rep="${esc(j.id)}" title="Start a CEM report linked to this job">📝 Start CEM</button> `:""};
 function renderKpis(){
   const od=jobs.filter(overdue).length,d30=jobs.filter(due30).length,ov=jobs.filter(j=>lvl(j)==="over").length;
   const comp=jobs.length?Math.round(100*jobs.filter(j=>!overdue(j)).length/jobs.length):100;
   const ctlOpen=jobs.filter(j=>lvl(j)==="over"&&!(j.controls||[]).some(c=>c.verif===EFFECTIVE)).length;
-  const k=[["Total jobs",jobs.length,"","all"],["Active",jobs.filter(j=>!done(j)).length,"","all"],["Overdue",od,od?"over":"safe","overdue"],
-    ["Due in 30 days",d30,d30?"warn":"safe","due30"],["Over OEL",ov,ov?"over":"safe","over"],["Completed",jobs.filter(done).length,"safe","all"],
+  const k=[["Total jobs (by report no.)",repCount(jobs),"","all"],["Active",repCount(jobs.filter(j=>!done(j))),"","all"],["Overdue",od,od?"over":"safe","overdue"],
+    ["Due in 30 days",d30,d30?"warn":"safe","due30"],["Over OEL",ov,ov?"over":"safe","over"],["Completed",repCount(jobs.filter(done)),"safe","all"],
     ["Deadline compliance",comp+"%",comp>=90?"safe":comp>=70?"warn":"over","all"],["OEL findings not yet controlled",ctlOpen,ctlOpen?"over":"safe","over"]];
   $("#kpis").innerHTML=k.map(x=>`<div class="kpi ${x[2]}" data-q="${x[3]}"><b>${x[1]}</b><span>${x[0]}</span></div>`).join("");
   $$("#kpis .kpi").forEach(e=>e.onclick=()=>{setQuick(e.dataset.q);scrollReg()});
@@ -451,7 +457,7 @@ function renderTrend(){
   $("#trend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}</svg><div class="legend">${leg}</div>`;
 }
 function renderReg(){
-  const L=filtered();$("#count").textContent=L.length+" of "+jobs.length+" jobs";
+  const L=filtered();$("#count").textContent=`${L.length} of ${jobs.length} jobs · ${repCount(L)} report${repCount(L)===1?"":"s"}`;
   if(view==="table")regTable(L);else if(view==="kanban")regKanban(L);else regTimeline(L);
 }
 const prBadge=p=>`<span class="pill ${p==="Critical"?"p-over":p==="High"?"p-warn":""}">${p}</span>`;
@@ -463,16 +469,16 @@ function regTable(L){
   ${L.sort((a,b)=>(done(a)-done(b))||(done(a)?(b.deadline||"").localeCompare(a.deadline||""):(a.deadline||"9").localeCompare(b.deadline||"9"))).map(j=>`<tr id="r-${j.id}"><td><b>${jid(j)}</b>${j.recur?` <span class="pill" title="Recurs every ${j.recur} months">↻ ${j.cycle}</span>`:""}<br>${esc(j.title)}</td><td>${esc(j.reportNo)||"–"}</td><td>${esc(j.location)}</td><td>${esc(j.category)}</td><td>${esc(j.pic)}</td><td>${prBadge(j.priority)}</td><td>${dlBadge(j)}</td>
   <td><select data-st="${j.id}" style="min-width:120px" ${dis}>${STATUS.map(s=>`<option ${s===j.status?"selected":""}>${s}</option>`).join("")}</select></td><td>${esc(j.nextAction)||"–"}</td>
   <td><div class="prog">${["sampling","lab","draft","review"].map(k=>`<i class="${j.checklist?.[k]?"d":""}" title="${k}"></i>`).join("")}</div><span class="muted" style="font-size:11px">${progN(j)}/4</span></td><td>${lvlPill(j)}</td>
-  <td class="noP" style="white-space:nowrap">${j.reportId?`<button class="sm" data-rep="${esc(j.id)}" title="Open the CEM report for this job">📄 Report</button> `:canEdit?`<button class="sm" data-rep="${esc(j.id)}" title="Start a CEM report linked to this job">📝 Start CEM</button> `:""}<span class="ed"><button class="sm" data-ed="${j.id}">Edit</button> ${lvl(j)==="over"?`<button class="sm" data-ctl="${j.id}">Control</button> `:""}<button class="sm" data-del="${j.id}">Delete</button></span></td></tr>`).join("")}</table></div>`;
+  <td class="noP" style="white-space:nowrap">${repBtn(j)}<span class="ed"><button class="sm" data-ed="${j.id}">Edit</button> ${lvl(j)==="over"?`<button class="sm" data-ctl="${j.id}">Control</button> `:""}<button class="sm" data-del="${j.id}">Delete</button></span></td></tr>`).join("")}</table></div>`;
   $$("[data-st]").forEach(s=>s.onchange=()=>{setStatus(jobs.find(j=>j.id===s.dataset.st),s.value);render()});
   $$("[data-ed]").forEach(b=>b.onclick=()=>editJob(b.dataset.ed));
-  $$("[data-rep]").forEach(b=>b.onclick=()=>{const j=jobs.find(x=>x.id===b.dataset.rep);location.href=j.reportId?"cem.html?report="+encodeURIComponent(j.reportId):"cem.html?job="+encodeURIComponent(j.id)});
+  $$("[data-rep]").forEach(b=>b.onclick=()=>{const j=jobs.find(x=>x.id===b.dataset.rep);location.href=repURL(j)});
   $$("#reg [data-ctl]").forEach(b=>b.onclick=()=>openCtl(b.dataset.ctl));
   $$("[data-del]").forEach(b=>b.onclick=()=>{const j=jobs.find(x=>x.id===b.dataset.del);confirmBox(`Delete ${jid(j)} — ${j.title}?`,()=>{jobs=jobs.filter(x=>x!==j);render();toast("Deleted")})});
 }
 function regKanban(L){
   $("#reg").innerHTML=`<div class="kanban">${STATUS.map(s=>`<div class="col" data-col="${s}"><h3>${s} <span class="muted">(${L.filter(j=>j.status===s).length})</span></h3>
-  ${L.filter(j=>j.status===s).map(j=>`<div class="kc" draggable="${canEdit}" data-id="${j.id}"><b>${jid(j)}</b> ${prBadge(j.priority)}<br>${esc(j.title)}<div class="muted" style="font-size:12px">${esc(j.location)} · ${esc(j.pic)}</div><div style="margin-top:4px">${dlBadge(j)} ${ratio(j)!=null?lvlPill(j):""}</div>${j.reportId?`<a href="cem.html?report=${encodeURIComponent(j.reportId)}" style="font-size:12px">📄 Open report</a>`:""}</div>`).join("")}</div>`).join("")}</div>`;
+  ${L.filter(j=>j.status===s).map(j=>`<div class="kc" draggable="${canEdit}" data-id="${j.id}"><b>${jid(j)}</b> ${prBadge(j.priority)}<br>${esc(j.title)}<div class="muted" style="font-size:12px">${esc(j.location)} · ${esc(j.pic)}</div><div style="margin-top:4px">${dlBadge(j)} ${ratio(j)!=null?lvlPill(j):""}</div>${modOf(j)!=="cem"||j.reportId?`<a href="${repURL(j)}" style="font-size:12px">📄 Open report</a>`:""}</div>`).join("")}</div>`).join("")}</div>`;
   if(!canEdit)return;
   $$(".kc").forEach(c=>{c.ondragstart=e=>e.dataTransfer.setData("text",c.dataset.id);c.ondblclick=()=>editJob(c.dataset.id)});
   $$(".col").forEach(col=>{col.ondragover=e=>{e.preventDefault();col.classList.add("drag")};col.ondragleave=()=>col.classList.remove("drag");

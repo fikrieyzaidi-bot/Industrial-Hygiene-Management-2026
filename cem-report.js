@@ -191,13 +191,19 @@ const dd=s=>String(s).replace(/(^|[^.])\.\.(?!\.)/g,"$1.");
 const textOf=k=>{const t=TEXTS.find(x=>x[0]===k);if(st.text[k]!=null)return st.text[k];const a=analyse();return dd(limWords(t[2](a),a))};
 function renderTexts(softly){
   if(softly){TEXTS.forEach(([k])=>{const el=$(`[data-tx="${k}"]`);if(el&&st.text[k]==null&&document.activeElement!==el)el.value=textOf(k)});return}
-  $("#texts").innerHTML=TEXTS.map(([k,t])=>`<div class="tx"><div class="row"><label style="margin:0;font-weight:600;color:var(--ink)">${t}</label><button class="sm noP" data-txr="${k}">Rewrite</button></div><textarea data-tx="${k}"></textarea></div>`).join("");
+  $("#texts").innerHTML=TEXTS.map(([k,t])=>`<div class="tx"><div class="row"><label style="margin:0;font-weight:600;color:var(--ink)">${t}</label><button class="sm noP" data-txr="${k}">Rewrite</button></div><textarea data-tx="${k}"></textarea>${k==="r1"?'<div class="ph" id="recPh"></div>':""}</div>`).join("");renderRecPhotos();
   TEXTS.forEach(([k])=>{const el=$(`[data-tx="${k}"]`);el.value=textOf(k);el.style.height=Math.min(420,Math.max(110,el.value.length/4))+"px";el.oninput=()=>{st.text[k]=el.value;save()}});
   $$("[data-txr]").forEach(b=>b.onclick=()=>{const k=b.dataset.txr,el=$(`[data-tx="${k}"]`),before=el.value;
     st.textVar=st.textVar||{};st.textVar[k]=(st.textVar[k]||0)+1;delete st.text[k];save();el.value=textOf(k);
     el.style.transition="background .6s";el.style.background="#fff6d6";setTimeout(()=>el.style.background="",900);
     toast(el.value===before?"Already up to date with your latest results":"Rewritten from your latest results (new wording)")});
 }
+/* pictures under 7.1 Action to Be Taken (e.g. example controls) */
+function renderRecPhotos(){const el=$("#recPh");if(!el)return;st.recPhotos=st.recPhotos||[];
+  el.innerHTML=st.recPhotos.map(pid=>`<div class="t"><img data-rpid="${pid}" alt=""><button class="noP" data-rpdel="${pid}" title="Remove picture">✕</button></div>`).join("")+`<label class="add noP">+ Add picture<input type="file" accept="image/*" multiple id="recPhIn"></label><span class="muted noP" style="font-size:12px">Pictures appear below the recommendations in the report.</span>`;
+  el.querySelectorAll("[data-rpid]").forEach(async img=>{img.src=await photoURL(img.dataset.rpid)});
+  $("#recPhIn").onchange=async e=>{try{for(const fl of e.target.files){const p=await shrinkImage(fl,1200),id=uid();await idb.put("photo:"+id,p);st.recPhotos.push(id)}}catch(err){toast("Could not read that image")}save();renderRecPhotos()};
+  el.querySelectorAll("[data-rpdel]").forEach(b=>b.onclick=async()=>{st.recPhotos=st.recPhotos.filter(x=>x!==b.dataset.rpdel);await idb.del("photo:"+b.dataset.rpdel);save();renderRecPhotos()})}
 $("#bRegen").onclick=()=>{st.textVar=st.textVar||{};TEXTS.forEach(([k])=>st.textVar[k]=(st.textVar[k]||0)+1);st.text={};save();renderTexts();toast("All sections rewritten from your latest results")};
 
 /* ---------------- report model (shared by PDF and Word) ---------------- */
@@ -226,7 +232,7 @@ function model(){
   B.push({t:"h1",x:"6.0 DISCUSSION",page:1});
   [["d1","6.1 Chemical Exposure Monitoring Results"],["d2","6.2 Factors Contributing Towards the Results and Adequacy of Existing Control Measures"],["d3","6.3 Justification on Sampling Strategy"]].forEach(([k,t])=>{B.push({t:"h2",x:t});B.push({t:"p",x:textOf(k)})});
   B.push({t:"h1",x:"7.0 RECOMMENDATION",page:1});B.push({t:"p",x:"The following points should be considered to comply with the Occupational Safety and Health Act (OSHA) 1994 and USECHH Regulations 2000."});
-  B.push({t:"h2",x:"7.1 Action to Be Taken"});B.push({t:"p",x:textOf("r1"),tight:1});
+  B.push({t:"h2",x:"7.1 Action to Be Taken"});B.push({t:"p",x:textOf("r1"),tight:1});if((st.recPhotos||[]).length)B.push({t:"photos",ids:st.recPhotos});
   B.push({t:"h2",x:"7.2 Record Keeping"});B.push({t:"p",x:"Under Regulation 26(4), records of monitoring shall be kept for at least 30 years where representative of personal exposure, and at least 5 years in any other case (e.g. area monitoring)."});
   B.push({t:"h2",x:"7.3 Regulations Compliance"});B.push({t:"p",x:"The employer should keep exposure to chemical hazards at the lowest practicable level and below the permissible exposure limits."});
   B.push({t:"h2",x:"7.4 Necessity of further monitoring"});B.push({t:"table",head:["Exposure Result","Frequency of monitoring"],rows:[["Above the permissible exposure limit","Not more than six (6) months"],["Above half of the eight-hour TWA but below the eight-hour TWA","Not more than twelve (12) months"]],w:[.6,.4]});
@@ -296,6 +302,9 @@ async function buildPdf(B){
     if(b.t==="p"){para(b.x,{s:b.s||10.5,lh:b.s?13.5:15,gap:b.tight?5:7});continue}
     if(b.t==="cap"){ensure(60);let x=ML;txt(b.b+" ",x,y-10.5,BD,10.5);x+=tw(b.b+" ",BD,10.5);txt(b.x,x,y-10.5,R,10.5);y-=18;continue}
     if(b.t==="table"){table(b.head,b.rows,b.w,{s:b.s||9,bold:b.bold??-1,after:b.after??10});continue}
+    if(b.t==="photos"){const ims=[];for(const pid of b.ids){const p=await idb.get("photo:"+pid);if(p){try{ims.push(await pdf.embedJpg(p.data))}catch(e){try{ims.push(await pdf.embedPng(p.data))}catch(e2){}}}}
+      const tw=160,th=120,gap=10,per=Math.max(1,Math.floor((CW+gap)/(tw+gap)));
+      for(let i=0;i<ims.length;i+=per){ensure(th+gap);ims.slice(i,i+per).forEach((im,j)=>{const d=im.scaleToFit(tw,th);page.drawImage(im,{x:ML+j*(tw+gap)+(tw-d.width)/2,y:y-th+(th-d.height)/2,width:d.width,height:d.height})});y-=th+gap}continue}
     if(b.t==="equip"){const E=st.equip.filter(e=>e.name||e.details||e.photos.length);
       const fr=[.06,.24,.38,.32],ws=fr.map(v=>v*CW),pad=5,s=9,lh=12,gap=5;
       const head=["No.","Equipment / item","Details","Photo"],drawHead=()=>{let x=ML;const h=s+2*pad+2;head.forEach((c,i)=>{page.drawRectangle({x,y:y-h,width:ws[i],height:h,borderColor:LINE,borderWidth:.6,color:HEAD});txt(c,x+pad,y-pad-s+1,BD,s,rgb(.3,.35,.42));x+=ws[i]});y-=h};
@@ -373,6 +382,8 @@ async function buildDocx(B){
     if(b.t==="p"){b.x.split("\n").filter(s=>s.trim()).forEach(s=>{const bl=/^• /.test(s);kids.push(bl?new D.Paragraph({children:[run(s.slice(2),{size:b.s?b.s*2:SZ})],bullet:{level:0},alignment:AL.JUSTIFIED,spacing:{after:100,line:300},pageBreakBefore:brk}):P([run(s,{size:b.s?b.s*2:SZ})],{align:AL.JUSTIFIED,after:b.tight?80:140}));brk=false});continue}
     if(b.t==="cap"){kids.push(P([run(b.b+" ",{bold:true}),run(b.x)],{after:80,keepNext:true}));continue}
     if(b.t==="table"){table(b.head,b.rows,b.w,{s:b.s,bold:b.bold,after:b.after});continue}
+    if(b.t==="photos"){const runs=[];for(const pid of b.ids){const p=await idb.get("photo:"+pid);if(p){const k2=Math.min(200/p.w,150/p.h,1);runs.push(new D.ImageRun({type:/png/i.test(p.type)?"png":"jpg",data:new Uint8Array(p.data),transformation:{width:Math.round(p.w*k2),height:Math.round(p.h*k2)}}),new D.TextRun({text:"  "}))}}
+      if(runs.length)kids.push(new D.Paragraph({spacing:{after:160},children:runs}));continue}
     if(b.t==="equip"){const E=st.equip.filter(e=>e.name||e.details||e.photos.length);
       if(!E.length){table(["Equipment / media"],[["-"]],[1]);continue}
       if(brk){kids.push(new D.Paragraph({children:[new D.PageBreak()]}));brk=false}

@@ -210,7 +210,7 @@ function model(){const I=st.info,a=analyse(),B=[],T=(cap,head,rows,o={})=>B.push
     {t:"h3",x:"7.3.5 Adequacy of Existing Control Measures"},{t:"p",x:textOf("ctl",a)},
     {t:"p",i:true,x:`It must be noted that this Noise Risk Assessment only reflects the operational conditions for ${I.client} at their ${W} during the period of ${I.dates}.`});
   /* 8.0 */
-  B.push({t:"h1",x:"8.0 RECOMMENDATIONS"},{t:"p",x:textOf("rec",a)});
+  B.push({t:"h1",x:"8.0 RECOMMENDATIONS"},{t:"p",x:textOf("rec",a)},{t:"photos",ids:(st.textPhotos||{}).rec||[]});
   const segRows=[];st.seg.forEach(g=>{const ps=a.P.filter(p=>segOf(p)===g);if(!ps.length)return;const r=ps.map(p=>p.r),srcs=String(g.srcs||"").split(/[,;]\s*/).filter(Boolean);
     const exc=r.some(x=>x.excessive),nel=r.some(x=>x.nel||x.emx||x.epk);
     const engRec=srcs.map(s=>(st.src.find(x=>x.src.toLowerCase()===s.toLowerCase())||{}).eng).filter(Boolean);
@@ -254,7 +254,7 @@ async function importDatasheet(file){const wb=await readWorkbook(file);const sm=
 function dashJobs(o){const I=st.info,a=analyse(),base=`nra-${slugId(I.reportNo||I.client)}`;
   return st.seg.map(g=>{const ps=a.P.filter(p=>segOf(p)===g);if(!ps.length)return null;const w=ps.reduce((x,y)=>(y.r.lex??0)>(x.r.lex??0)?y:x);
     const over=ps.some(p=>p.r.nel||p.r.emx||p.r.epk),exc=ps.some(p=>p.r.excessive);
-    return baseJob({id:`${base}-${slugId(g.seg)}`,title:`NRA – ${g.seg} (${I.workplace||"workplace"})`,reportNo:I.reportNo||"",location:I.locName||I.client||"",category:"Noise",pic:o.pic,
+    return baseJob({source:"noise",id:`${base}-${slugId(g.seg)}`,title:`NRA – ${g.seg} (${I.workplace||"workplace"})`,reportNo:I.reportNo||"",location:I.locName||I.client||"",category:"Noise",pic:o.pic,
       priority:over?"Critical":exc?"High":"Normal",status:o.status,requestDate:o.req||o.date,deadline:o.date,result:+f1(w.r.lex),unit:"dBA",nab:85,recur:0,
       nextAction:over?"Implement noise controls & HCP (PHP, training, audiometric testing); repeat noise monitoring after controls":exc?"Hearing conservation training & annual audiometric testing; maintain controls":"Maintain controls; review NRA within 5 years",
       notes:`From Noise report. Highest LEX,8h: ${w.name} ${f1(w.r.lex)} dB(A); Max ${f1(w.r.mx)} dB(A); Peak ${f1(w.r.pk)} dB(C). Client: ${I.client||"-"}.`})}).filter(Boolean)}
