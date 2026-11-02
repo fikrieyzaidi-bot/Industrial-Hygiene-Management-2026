@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>Noise Risk Assessment — Report Generator</title>
-<link rel="stylesheet" href="ih-modules.css">
+<link rel="stylesheet" href="ih-modules.css?v=20261102a">
+<script>document.write('<script src="config.js?v='+Date.now()+'"><\/script>')</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"></script>
 </head><body>
-<div class="top noP"><a href="index.html">← Back to dashboard</a><a href="cem.html">🧪 CEM</a><a href="chra.html">⚗️ CHRA</a>
+<div class="top noP"><a href="index.html">← Back to dashboard</a><a href="cem.html">🧪 CEM</a><a href="chra.html">⚗️ CHRA</a><span id="cloudSt" style="font-size:12.5px;opacity:.95;margin-left:6px"></span>
  <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button class="tb" id="bSample">📂 Load previous project</button>
  <label class="tb filebtn" style="background:rgba(255,255,255,.12);color:#fff">⬆ Restore JSON<input type="file" id="inJson" accept=".json"></label>
- <button class="tb" id="bBackup">⬇ Backup JSON</button><button class="tb" id="bNew">+ New report</button><button class="tb" id="bTheme">◐</button></span></div>
+ <button class="tb" id="bBackup">⬇ Backup JSON</button><button class="tb" id="bNew">+ New report</button><button class="tb" id="bWipe" title="Clear all data in this report">🗑 Clear data</button><button class="tb" id="bTheme">◐</button></span></div>
 <div class="wrap">
 <h1>🔊 Noise Risk Assessment (NRA) — Report Generator</h1>
 <p class="lead">OSH (Noise Exposure) Regulations 2019 · ICOP 2019. Enter or import the data, check the QA panel, then download the full report in Word. Data is saved automatically in this browser.</p>
@@ -27,7 +29,11 @@
  <div class="span-all"><label>3.1 Process description (one paragraph per line)</label><textarea data-f="process" rows="4"></textarea></div>
 </div></div></div></div>
 
-<div class="sec"><h2>2. Instruments (Table 3) & SEGs (Table 5)</h2><div class="card"><div id="tInst"></div>
+<div class="sec"><h2>2. Instruments (Table 3) & SEGs (Table 5)</h2><div class="card">
+ <h3 style="margin-top:0">Instruments — shown in Table 3 of the report with photos</h3>
+ <div class="row noP" style="margin-bottom:10px"><select id="eqFrom" style="max-width:420px"></select><button id="bEqCopy">📋 Copy equipment from previous report</button><span class="muted" style="font-size:12px">Copies instruments, calibration dates and photos, so you don't retype them.</span></div>
+ <div id="instCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px"></div>
+ <div class="row noP" style="margin-top:10px"><button class="pri" id="bEqAdd">+ Add instrument</button></div>
  <h3>Similar Exposure Groups — "Match keyword" links personal results to the SEG; "Noise sources" drives Table 13 recommendations</h3><div id="tSeg"></div></div></div>
 
 <div class="sec"><h2>3. Area noise monitoring (Table 7)</h2><div class="card"><div id="tArea"></div></div></div>
@@ -44,23 +50,43 @@
 
 <div class="sec"><h2>6. QA check (assessor review)</h2><div class="card" id="qa"></div></div>
 <div class="sec"><h2>7. Report text (auto-written, editable)</h2><div class="card" id="texts"></div></div>
-<div class="sec"><h2>8. Download</h2><div class="card"><div class="row"><button class="pri" id="bWord">⬇ Download Word report (.docx)</button><button id="bPrev">🖨 Preview / Save as PDF</button></div>
- <p class="muted" style="font-size:12px">Word asks to update fields on opening — click Yes to build the table of contents. Insert appendices A–I (flowchart, layout, noise map, datasheets, printouts, certificates, Form A, photos) after generating.</p></div></div>
+<div class="sec"><h2>8. Appendices (attached into the report)</h2><div class="card"><p class="muted" style="margin:0 0 10px;font-size:13px">Upload PDF or image files. They're inserted after each appendix title page in the Word report and the PDF preview.</p><div id="att"></div></div></div>
+<div class="sec"><h2>9. Download</h2><div class="card" id="dl"></div></div>
 </div>
-<script src="ih-common.js"></script><script src="noise-sample.js"></script><script src="noise-app.js"></script>
+<div class="wrap" style="padding-top:0"><div class="sec"><h2>10. Complete &amp; save to dashboard</h2><div class="card" id="dash"></div></div></div>
+<script src="ih-common.js?v=20261102a"></script><script src="noise-sample.js?v=20261102a"></script><script src="noise-app.js?v=20261102a"></script>
 <script>
-let a=null;
-function refresh(){a=analyse();save();
+let a=null,dash=null;
+function renderInst(){const F=(i,k,l,ph)=>`<div><label>${l}</label><input data-in="${i}" data-k="${k}" value="${esc(st.inst[i][k]||"")}" placeholder="${ph||""}"></div>`;
+  st.inst.forEach(x=>{x.photos=x.photos||[]});
+  $("#instCards").innerHTML=st.inst.map((x,i)=>`<div class="card" style="padding:12px"><div class="fg" style="grid-template-columns:1fr 1fr">${F(i,"inst","Instrument","Sound Level Meter / Noise Dosimeter / Calibrator")}${F(i,"mfr","Manufacturer")}${F(i,"model","Model (class)")}${F(i,"id","Equipment ID / serial no.")}<div class="span-all">${F(i,"cal","Calibration validity","dd.mm.yyyy – dd.mm.yyyy")}</div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center">${x.photos.map(pid=>`<div style="position:relative;width:110px;height:80px;border:1px solid var(--line);border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center"><img data-pid="${pid}" style="max-width:104px;max-height:74px;object-fit:contain"><button class="sm noP" data-phdel="${i}:${pid}" style="position:absolute;top:-9px;right:-9px;border-radius:50%;padding:0 6px">✕</button></div>`).join("")}
+    <label class="filebtn noP" style="border:1.5px dashed var(--pri);color:var(--pri)">+ Add photo<input type="file" accept="image/*" multiple data-phadd="${i}"></label></div>
+    <div class="row noP" style="margin-top:10px"><button class="sm" data-eqdel="${i}">Delete</button>${i>0?`<button class="sm" data-equp="${i}">↑ Move up</button>`:""}</div></div>`).join("")||'<p class="muted" style="font-size:13px">No instruments yet. Add one or copy from a previous report.</p>';
+  $$("[data-in]").forEach(el=>el.oninput=()=>{st.inst[+el.dataset.in][el.dataset.k]=el.value;refresh()});
+  $$("[data-pid]").forEach(async img=>{img.src=await photoURL(img.dataset.pid)});
+  $$("[data-phadd]").forEach(inp=>inp.onchange=async()=>{const x=st.inst[+inp.dataset.phadd];try{for(const fl of inp.files){const ph=await shrinkImage(fl),id=uid();await fileDB.put("photo:"+id,ph);x.photos.push(id)}}catch(e){toast("Could not read that image")}save();renderInst()});
+  $$("[data-phdel]").forEach(b=>b.onclick=()=>{const [i,pid]=b.dataset.phdel.split(":");st.inst[+i].photos=st.inst[+i].photos.filter(p=>p!==pid);save();renderInst()});
+  $$("[data-eqdel]").forEach(b=>b.onclick=()=>{const x=st.inst[+b.dataset.eqdel];if((x.inst||x.id)&&!confirm(`Delete "${x.inst||"this instrument"} ${x.id||""}"?`))return;st.inst.splice(+b.dataset.eqdel,1);save();renderInst();refresh()});
+  $$("[data-equp]").forEach(b=>b.onclick=()=>{const i=+b.dataset.equp;[st.inst[i-1],st.inst[i]]=[st.inst[i],st.inst[i-1]];save();renderInst()})}
+function renderEqFrom(){const cur=`${st.info.client||"(no client)"} – ${st.info.reportNo||st.info.dates||"draft"}`,H=equipHistory().filter(h=>h.label!==cur);
+  $("#eqFrom").innerHTML=H.map((h,i)=>`<option value="h${i}">${esc(h.label)} (${new Date(h.at).toLocaleDateString("en-GB")})</option>`).join("")+`<option value="sample">Previous project – PCM Klang Motor (Toyota Sg. Rasah) NRA, July 2026</option>`}
+$("#bEqCopy").onclick=()=>{const v=$("#eqFrom").value,H=equipHistory().filter(h=>h.label!==`${st.info.client||"(no client)"} – ${st.info.reportNo||st.info.dates||"draft"}`);
+  const src=v==="sample"?window.NOISE_SAMPLE.inst:(H[+v.slice(1)]||{}).inst;if(!src||!src.length)return toast("Nothing to copy");
+  if(st.inst.length&&!confirm(`Replace the ${st.inst.length} instrument(s) in this report with ${src.length} from the selected report?`))return;
+  st.inst=structuredClone(src).map(x=>({...x,photos:x.photos||[]}));save();renderInst();refresh();toast(`${src.length} instrument(s) copied. Update the calibration dates if they've changed.`)};
+$("#bEqAdd").onclick=()=>{st.inst.push({inst:"",mfr:"",model:"",id:"",cal:"",photos:[]});save();renderInst()};
+function refresh(){a=analyse();save();if(dash)dash.refresh();if(dl)dl.refresh();
   $("#kpi").innerHTML=`<div>Monitored<b>${a.n}</b></div><div>&gt; 82 dB(A)<b>${a.c82}</b></div><div>&gt; NEL 85 dB(A)<b>${a.cnel}</b></div><div>&gt; Max 115 dB(A)<b>${a.cmx}</b></div><div>&gt; Peak 140 dB(C)<b>${a.cpk}</b></div><div>Area &gt; 85 dB(A)<b>${a.aRed.length}/${a.A.length}</b></div>`;
   const Q=qa(a);$("#qa").innerHTML=Q.length?Q.map(([c,m])=>`<div class="${c==="err"?"err":"note"}">${c==="err"?"⛔":"⚠"} ${esc(m)}</div>`).join(""):`<div class="ok">✔ No issues found.</div>`;
   $$("[data-tx]").forEach(el=>{if(st.text[el.dataset.tx]==null)el.value=textOf(el.dataset.tx,a)})}
 const pill=(b,t)=>`<span class="pill ${b?"p-over":"p-safe"}">${t}</span>`;
 const zp=z=>`<span class="pill ${z==="Purple"?"p-purple":z==="Red"?"p-over":z==="Yellow"?"p-warn":"p-safe"}">${z||"–"}</span>`;
-function drawAll(){companyCard($("#coCard"),st.info,()=>save());bindFields($("#fInfo"),st.info,()=>refresh());
+function drawAll(){st.att=st.att||{};companyCard($("#coCard"),st.info,()=>save());bindFields($("#fInfo"),st.info,()=>refresh());
   const ch=redraw=>{refresh();if(redraw===true)drawAll()};
-  editTable($("#tInst"),[{k:"inst",h:"Instrument"},{k:"mfr",h:"Manufacturer"},{k:"model",h:"Model"},{k:"id",h:"Equipment ID"},{k:"cal",h:"Calibration validity (dd.mm.yyyy – dd.mm.yyyy)",w:220}],st.inst,ch);
+  renderInst();renderEqFrom();appendixCards($("#att"),NOISE_APPX,st.att,()=>{save();dl&&dl.refresh()});
   editTable($("#tSeg"),[{k:"area",h:"Work area"},{k:"seg",h:"SEG"},{k:"n",h:"No. personnel",type:"num"},{k:"sampled",h:"Sampled",type:"num"},{k:"key",h:"Match keyword"},{k:"srcs",h:"Noise sources (comma-separated)",w:240}],st.seg,ch);
-  editTable($("#tArea"),[{k:"area",h:"Working area"},{k:"task",h:"Job specification",type:"area"},{k:"n",h:"No. pers.",type:"num"},{k:"mon",h:"Monitored",type:"num"},{k:"src",h:"Source of noise",w:260},{k:"type",h:"Type",type:"select",opts:["SCN","FCN","IMP"]},{k:"min",h:"Min",type:"num"},{k:"max",h:"Max",type:"num"},{h:"Avg dB(A) (auto)",n:1,calc:r=>{const v=avgOf(r);if(num(r.min)!=null&&num(r.max)!=null)r.avg=f1(v);return f1(v)}},{h:"Zone",calc:r=>zp(zone(avgOf(r)))}],st.area,ch);
+  editTable($("#tArea"),[{k:"area",h:"Working area"},{k:"task",h:"Job specification",type:"area"},{k:"n",h:"No. pers.",type:"num"},{k:"mon",h:"Monitored",type:"num"},{k:"src",h:"Source of noise",w:260},{k:"type",h:"Type",type:"select",opts:["SCN","FCN","IMP"]},{k:"min",h:"Min",type:"num"},{k:"max",h:"Max",type:"num"},{k:"lavg",h:"L(average)",type:"num"},{h:"Avg dB(A) (auto)",n:1,calc:r=>{const v=avgOf(r);if([r.min,r.max,r.lavg].filter(x=>num(x)!=null).length>=2)r.avg=f1(v);return f1(v)}},{h:"Zone",calc:r=>zp(zone(avgOf(r)))}],st.area,ch);
   editTable($("#tPers"),[{k:"date",h:"Date"},{k:"seg",h:"SEG (designation)",w:200},{k:"name",h:"Employee"},{k:"area",h:"Working area"},{k:"dosi",h:"Dosimeter ID"},{k:"dur",h:"Duration hh:mm:ss"},{k:"leq",h:"LeqTe",type:"num"},{k:"max",h:"Max",type:"num"},{k:"peak",h:"Peak dB(C)",type:"num"},
     {h:"LEX,8h",n:1,calc:r=>f1(calcP(r).lex)},{h:"Dose %",n:1,calc:r=>f1(calcP(r).dose)},{h:"Limits",calc:r=>{const c=calcP(r);return pill(c.e82,">82")+" "+pill(c.nel,">85")+" "+pill(c.emx,"Max")+" "+pill(c.epk,"Peak")}}],st.personal,ch);
   editTable($("#tSrc"),[{k:"src",h:"Noise source"},{k:"disc",h:"Discussion",type:"area",w:320},{k:"eng",h:"Engineering recommendation",type:"area",w:300}],st.src,ch);
@@ -69,15 +95,22 @@ function drawAll(){companyCard($("#coCard"),st.info,()=>save());bindFields($("#f
   $("#texts").innerHTML=TEXTS.map(([k,l])=>`<div class="tx" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>${esc(l)}</b><button class="sm noP" data-rw="${k}">↻ Rewrite from data</button></div><textarea data-tx="${k}"></textarea></div>`).join("");
   $$("[data-tx]").forEach(el=>{el.value=st.text[el.dataset.tx]??"";el.oninput=()=>{st.text[el.dataset.tx]=el.value;save()}});
   $$("[data-rw]").forEach(b=>b.onclick=()=>{delete st.text[b.dataset.rw];refresh()});
-  refresh()}
+  dash=dashboardCard($("#dash"),dashJobs,st.info);mkDl();refresh()}
 $("#bSample").onclick=()=>{if(st.personal.length&&!confirm("Replace the current data with the previous project (PCM Klang Motor – Toyota Sg. Rasah NRA, July 2026)?"))return;st=structuredClone(window.NOISE_SAMPLE);applyCompanyDefault(st.info);drawAll();toast("Previous project loaded")};
 $("#bNew").onclick=()=>{if(!confirm("Start a new blank NRA report? Download a JSON backup first if you need the current data."))return;st=structuredClone(BLANK);applyCompanyDefault(st.info);drawAll()};
+$("#bWipe").onclick=async()=>{if(!confirm("Clear ALL data in this report (results, text and attached appendix files)? Company details and logo are kept. Download a JSON backup first if you need it."))return;
+  for(const fs of Object.values(st.att||{}))for(const f of fs)await fileDB.del("file:"+f.id).catch(()=>{});
+  st=structuredClone(BLANK);applyCompanyDefault(st.info);if(typeof cur!=="undefined")cur=0;save();drawAll();toast("Report data cleared")};
 $("#bBackup").onclick=()=>backupJson(st,`NRA_${(st.info.clientShort||st.info.client||"report").replace(/\W+/g,"_")}.json`);
 $("#inJson").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{st={...structuredClone(BLANK),...await readJsonFile(f)};drawAll();toast("Restored")}catch(err){toast("Invalid JSON file")}e.target.value=""};
 $("#inDs").onchange=async e=>{let n=0;for(const f of e.target.files){try{n+=await importDatasheet(f)}catch(err){console.error(err);toast(`Could not read ${f.name}`)}}e.target.value="";drawAll();toast(`${n} personal result(s) imported`)};
-$("#bWord").onclick=()=>downloadWord(model(),META(),`${st.info.type||""} NRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""),st.info);
-$("#bPrev").onclick=()=>previewBlocks(model(),META(),st.info);
+const doWord=()=>downloadWord(model(),META(),`${st.info.type||""} NRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""),st.info),doPdf=()=>previewBlocks(model(),META(),st.info);
+let dl=null;function mkDl(){dl=downloadSection($("#dl"),{word:doWord,pdf:doPdf,att:()=>st.att,appx:()=>NOISE_APPX,xlsName:()=>`NRA ${st.info.client||"report"}.xlsx`,
+  missing:()=>[!st.info.client&&"client name",!st.personal.length&&"personal noise results",!st.area.length&&"area noise monitoring",!st.inst.length&&"instruments (Table 3)",!st.info.assessor&&"Noise Risk Assessor"].filter(Boolean),
+  excel:()=>{const A=analyse();return[["Personal (Table 8)",[["Date","SEG","Employee","Working area","Dosimeter","Duration","Dose %","LeqTe","LEX,8h","Max","Peak","Excessive 82","NEL 85","Max 115","Peak 140"],...A.P.map(p=>[p.date,p.seg,p.name,p.area,p.dosi,p.dur,+f1(p.r.dose),p.r.leq,+f1(p.r.lex),p.r.mx,p.r.pk,yn(p.r.e82),yn(p.r.nel),yn(p.r.emx),yn(p.r.epk)])]],
+    ["Area (Table 7)",[["Working area","Source of noise","Type","Min","Max","L(average)","Avg dB(A)","Zone"],...A.A.map(x=>[x.area,x.src,x.type,num(x.min),num(x.max),num(x.lavg),+f1(x.avgN),x.z])]],
+    ["Instruments (Table 3)",[["Instrument","Manufacturer","Model","Equipment ID","Calibration validity"],...st.inst.map(i=>[i.inst,i.mfr,i.model,i.id,i.cal])]]]}})}
 $("#bTheme").onclick=()=>{const d=document.documentElement;d.dataset.theme=d.dataset.theme==="dark"?"":"dark";localStorage.setItem("ihcc_theme",d.dataset.theme)};
 document.documentElement.dataset.theme=localStorage.getItem("ihcc_theme")||"";
-drawAll();
+drawAll();initCloud();
 </script></body></html>

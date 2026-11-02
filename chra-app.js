@@ -1,7 +1,8 @@
 /* Chemical Health Risk Assessment (CHRA) report generator — USECHH Regulations 2000 / DOSH CHRA Manual 3rd Ed. (2018) */
 const KEY="ihcc_chra1";
-const BLANK={info:{nth:"first",consName:"",nextReassess:""},wus:[],prev:[],text:{}};
-let st=Store.load(KEY,BLANK);if(!st.info.consName)applyCompanyDefault(st.info);const save=()=>Store.save(KEY,st);
+const BLANK={info:{nth:"first",consName:"",nextReassess:""},wus:[],prev:[],text:{},att:{}};
+let st=Store.load(KEY,BLANK);if(!st.info.consName)applyCompanyDefault(st.info);st.att=st.att||{};const save=()=>Store.save(KEY,st);
+const chraAppx=()=>[...st.wus.map((w,i)=>["1"+String.fromCharCode(65+i),`FORMS A TO D: ${String(w.name).toUpperCase()}`]),["2","TABLES EXCERPT FROM CHRA MANUAL 3RD EDITION"],["3","LAYOUT OF WORK AREA"],["4","CERTIFICATE OF COMPETENT PERSON"]];
 const newWU=n=>({name:n||"New work unit",area:"",male:"",female:"",date:"",hours:"",health:"",healthRep:"",suscept:"",abnormal:"",mixed:"",ingestion:"",other:"",chems:[],inh:[],derm:[],tc:[],oc:[],erp:[],em:{existing:"",rec:""},ms:{existing:"",rec:""},specific:[]});
 
 /* ---------- CHRA Manual 3rd Ed. calculations ---------- */
@@ -132,7 +133,8 @@ function model(){const I=st.info,a=analyse(),B=[],T=(cap,head,rows,o={})=>B.push
   const sp=[];det.forEach(({w})=>w.specific.forEach(x=>sp.push([w.name,x.chem,x.rec])));
   T("Table 5.9 List of chemicals that require specific action",["Work Unit","Chemical","Recommendation"],sp.length?sp:[["–","None","Not applicable"]],{small:true});
   B.push({t:"h1",x:"6.0 CONCLUSION"},{t:"p",x:textOf("concl",a)});
-  B.push({t:"h1",x:"APPENDICES"},{t:"ul",items:[...st.wus.map((w,i)=>`Appendix 1${String.fromCharCode(65+i)}: Forms A to D – ${w.name}`),"Appendix 2: Tables excerpt from CHRA Manual 3rd Edition","Appendix 3: Layout of work area","Appendix 4: Certificate of competent person"]});
+  B.push({t:"h1",x:"APPENDICES"},{t:"ul",items:chraAppx().map(([L,T])=>`Appendix ${L}: ${T}`)});
+  chraAppx().forEach(([L,T])=>B.push({t:"appx",L,T,files:st.att[L]||[]}));
   return B}
 const META=()=>({title:`CHRA Report – ${st.info.client}`,header:`CHRA ${String(st.info.assessDate||"").slice(-4)} ${st.info.client||""}`,footer:`* This report shall not be reproduced, distributed or copied without prior written consent of ${st.info.consName||"the assessor"}.`});
 
@@ -151,3 +153,11 @@ async function importForms(file){const wb=await readWorkbook(file);const S=n=>wb
   w.oc=kv3(S("Form D2"));w.erp=kv3(S("Form D3"));const D4=S("Form D4");if(D4){w.em={existing:g(D4,"B7"),rec:g(D4,"C7")};w.ms={existing:g(D4,"B8"),rec:g(D4,"C8")}}
   w.specific=rows(S("Form D5"),8,{chem:"B",rec:"C"},"chem").filter(x=>x.chem.toLowerCase()!=="none");
   const i=st.wus.findIndex(x=>x.name.toLowerCase()===w.name.toLowerCase());if(i>=0)st.wus[i]=w;else st.wus.push(w);return w}
+
+/* ---------- dashboard job: one per CHRA report ---------- */
+function dashJobs(o){const I=st.info,a=analyse(),T=a.T,hi=T.inhH+T.derH;
+  if(!st.wus.length)return[];
+  return[baseJob({id:`chra-${slugId(I.reportNo||I.client)}`,title:`CHRA – ${I.clientShort||I.client||"workplace"} (${st.wus.length} work units)`,reportNo:I.reportNo||"",location:I.locName||I.client||"",
+    category:"Chemicals (VOC / hazardous)",pic:o.pic,priority:T.ap1||hi?"Critical":T.ap2?"High":"Normal",status:o.status,requestDate:o.req||o.date,deadline:o.date,result:"",unit:"",nab:"",recur:0,
+    nextAction:`Implement ${T.ap1} AP1 and ${T.ap2} AP2 actions within 1 month (USECHH Reg. 12); reassess by ${I.nextReassess||"5 years"}`,
+    notes:`From CHRA report. ${T.nchem} chemicals; inhalation H/M/L ${T.inhH}/${T.inhM}/${T.inhL}; dermal H/M/L ${T.derH}/${T.derM}/${T.derL}; AP1/AP2/AP3 ${T.ap1}/${T.ap2}/${T.ap3}. Client: ${I.client||"-"}.`})]}

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#2f5673">
+<title>CEM — 8-hour TWA</title>
+<script>document.write('<script src="config.js?v='+Date.now()+'"><\/script>')</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"></script>
+<script src="usechh-pel.js"></script>
+<style>
+:root{--bg:#eef2f5;--card:#fff;--ink:#1d2a35;--mute:#64748b;--line:#d8e0e7;--pri:#2f5673;--safe:#2e8b57;--warn:#b7791f;--over:#c0392b;--safe-bg:#e3f4ea;--warn-bg:#fdf1d8;--over-bg:#f9e0dd;--chip:#eef3f7;--field:#f3f6f9}
+[data-theme=dark]{--bg:#0f1720;--card:#18232e;--ink:#e3eaf0;--mute:#94a3b8;--line:#2a3846;--pri:#6aa6d0;--safe-bg:#173325;--warn-bg:#3a2e12;--over-bg:#3d1b18;--chip:#22303d;--field:#1f2b37}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px}
+button:disabled{opacity:.5;cursor:default}
+button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}button.sm{padding:2px 7px;font-size:12px}
+input,select,textarea{width:100%;border:1px solid var(--line);background:var(--field);border-radius:8px;padding:8px 10px}
+input[type=checkbox],input[type=radio]{width:auto}
+textarea{resize:vertical}
+td input,td select{padding:4px 5px;border-radius:6px;background:var(--card)}
+label{display:block;font-size:12.5px;color:var(--mute);margin-bottom:4px}
+.top{background:var(--pri);color:#fff;padding:9px 14px;display:flex;gap:10px;align-items:center}
+.top a{color:#fff;text-decoration:none;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 10px}
+.wrap{max-width:1320px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:0}.lead{color:var(--mute);margin:4px 0 14px}
+.sec{margin-bottom:18px}.sec>h2{font-size:17px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h3{font-size:14px;margin:0 0 8px}
+.fg{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.fg3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media(max-width:1000px){.fg{grid-template-columns:repeat(3,minmax(0,1fr))}.fg3{grid-template-columns:1fr}}
+@media(max-width:600px){.fg{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.span-all{grid-column:1/-1}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ts{overflow:auto}table{border-collapse:collapse;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:6px 5px;text-align:left;white-space:nowrap;vertical-align:middle}
+th{font-size:12px;color:var(--mute)}td.n{text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:var(--chip);white-space:nowrap}
+.p-safe{background:var(--safe-bg);color:var(--safe)}.p-warn{background:var(--warn-bg);color:var(--warn)}.p-over{background:var(--over-bg);color:var(--over)}
+.formula{background:var(--chip);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.7}
+.toggle{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px;color:var(--ink)}.toggle input{margin-top:3px}
+.chk{display:flex;gap:7px;align-items:flex-start;font-size:13px;color:var(--ink);margin:0 0 6px}.chk input{margin-top:2px}
+.muted{color:var(--mute)}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;background:var(--chip)}
+.drop.over{border-color:var(--pri)}
+.note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px;margin:8px 0}
+.ok{background:var(--safe-bg);color:var(--safe);border-radius:8px;padding:8px 12px;font-size:13px;margin:8px 0}
+.tx{margin-bottom:12px}.tx .row{justify-content:space-between}.tx textarea{min-height:110px;font-size:13px;line-height:1.5}
+.att{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.att .card{padding:10px 12px}.att ul{margin:6px 0 0;padding-left:18px;font-size:12.5px}
+.filebtn{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12.5px;background:var(--card);color:var(--ink)}
+.filebtn input{display:none}
+details summary{cursor:pointer;color:var(--pri);font-size:13px;margin-top:10px}
+tr.blank td{opacity:.55}
+.src{font-size:11.5px;color:var(--mute);white-space:normal;max-width:260px}
+.modal{position:fixed;inset:0;background:rgba(10,20,30,.55);display:none;align-items:center;justify-content:center;z-index:65;padding:16px}
+.modal.show{display:flex}.modal .box{background:var(--card);border-radius:14px;padding:18px;width:min(460px,100%)}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.choice button{padding:16px 10px;font-size:15px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:4px}
+.choice button span{font-size:12px;font-weight:400;color:var(--mute)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:10px;opacity:0;transition:.25s;z-index:80;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+.busy{position:fixed;inset:0;background:rgba(10,20,30,.45);display:none;align-items:center;justify-content:center;z-index:70;color:#fff;font-size:15px}
+.busy.show{display:flex}
+@media print{.top,.noP,button,.filebtn{display:none!important}body{background:#fff}.card{border:none;padding:0}td input,td select{border:none;padding:0;background:none}}
+.eq{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;background:var(--card)}
+.eq textarea{min-height:96px;font-size:13px}
+.ph{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.ph .t{position:relative;width:118px;height:88px;border:1px solid var(--line);border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:visible}
+.ph .t img{max-width:110px;max-height:80px;object-fit:contain}
+.ph .t button{position:absolute;top:-10px;right:-10px;width:26px;height:26px;border-radius:50%;padding:0;font-size:13px;line-height:24px;background:var(--card)}
+.ph .add{border:1.5px dashed var(--pri);color:var(--pri);border-radius:10px;padding:10px 14px;font-size:13px;cursor:pointer;background:none}
+.ph .add input{display:none}
+.top .tb{color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 10px}
+#mRep .box{width:min(760px,100%);max-height:85vh;overflow:auto}
+#mRep tr.r{cursor:pointer}#mRep tr.r:hover td{background:var(--chip)}
+.grp{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;background:var(--card)}
+.grp .gf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:900px){.grp .gf{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.srcok{color:var(--safe);font-size:13px;margin:10px 0 6px;line-height:1.4}
+.srcman{color:var(--warn);font-size:13px;margin:10px 0 6px}
+.grp table td input{min-width:90px}
+.grp .res{margin-top:8px;font-size:13px}
+.grp details textarea{min-height:80px;font-family:ui-monospace,monospace;font-size:12.5px}
+.co{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:start}
+@media(max-width:600px){.co{grid-template-columns:1fr}}
+.logo-prev{width:150px;height:110px;border:1.5px dashed var(--line);border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;margin:0 auto}
+.logo-prev img{max-width:140px;max-height:100px;object-fit:contain}
+</style>
+</head>
+<body style="visibility:hidden">
+<div class="top noP"><a href="index.html">← Back to dashboard</a><span id="cloudSt" style="font-size:12.5px;opacity:.95;margin-left:6px"></span>
+  <span style="margin-left:auto;display:flex;gap:8px"><button class="tb" id="bReports">📂 Reports</button><button class="tb" id="bNew">+ New report</button><button class="tb" id="bWipe" title="Clear all data in this report">🗑 Clear data</button></span></div>
+<div class="wrap" id="linkBar" style="padding-bottom:0;display:none"><div class="ok" id="linkTxt" style="margin:0"></div></div>
+<div class="wrap">
+<h1>CEM — 8-hour TWA</h1>
+<p class="lead">Upload the lab's Certificate of Analysis (CoA), enter the field data and existing controls, then download the full CEM report as PDF or Word, with all appendices attached. Data is saved automatically in this browser.</p>
+
+<!-- 1 REPORT INFO -->
+<div class="sec"><h2>1. Report info</h2><div class="card">
+<h3>Company details (cover page)</h3>
+<div class="co">
+  <div class="logo-box"><div id="logoPrev" class="logo-prev"><span class="muted" style="font-size:12px;text-align:center">No logo</span></div>
+    <div class="row noP" style="margin-top:6px;justify-content:center"><label class="filebtn" style="margin:0">Upload logo<input type="file" id="logoIn" accept="image/png,image/jpeg"></label><button class="sm" id="logoDel" style="display:none">Remove</button></div>
+    <div id="logoName" class="muted" style="font-size:11px;text-align:center;margin-top:4px;word-break:break-all"></div></div>
+  <div class="fg" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div style="grid-column:1/-1"><label>Company name</label><input data-i="consName" placeholder="e.g. Environmental Science (M) Sdn. Bhd."></div>
+    <div style="grid-column:1/-1"><label>Address</label><input data-i="consAddr"></div>
+    <div><label>Tel / fax</label><input data-i="consTel" placeholder="Tel : 03 - … Fax : 03 - …"></div>
+    <div><label>E-mail</label><input data-i="consEmail" placeholder="E-mail: …"></div>
+  </div>
+</div>
+<p class="muted noP" style="font-size:12px;margin:6px 0 14px">Saved as your default. Every new report starts with these company details and logo.</p>
+<h3>Client &amp; monitoring</h3>
+<div class="fg" id="info">
+  <div><label>Client</label><input data-i="client"></div>
+  <div><label>Client DOSH No.</label><input data-i="clientDosh"></div>
+  <div><label>Report No. (ESM)</label><input data-i="reportNo"></div>
+  <div><label>DOSH Report No.</label><input data-i="doshReportNo"></div>
+  <div><label>Monitoring date</label><input data-i="dates" placeholder="10th – 11th September 2026"></div>
+  <div style="grid-column:span 2"><label>Location address</label><input data-i="locAddr" placeholder="Site address (shown centred on the cover)"></div>
+  <div><label>Hygiene technician</label><input data-i="htName"></div>
+  <div><label>HT DOSH Reg. No.</label><input data-i="htReg"></div>
+  <div><label>HT position</label><input data-i="htPos"></div>
+  <div><label>Working hours</label><input data-i="hours"></div>
+  <div><label>CHRA report No.</label><input data-i="chraNo"></div>
+  <div class="span-all"><label>Equipment (pump, calibrator, media, anemometer), shown in Table 4 of the report with photos</label>
+    <div id="equip"></div>
+    <div class="row noP" style="margin-top:10px"><button class="pri" id="bEqAdd">+ Add equipment</button><button id="bEqReset">Reset to default list</button></div></div>
+</div>
+<h3 style="margin-top:18px">Work area</h3>
+<div class="fg">
+  <div><label>Work area / unit</label><input data-i="area" placeholder="Plant"></div>
+  <div><label>Work specification</label><input data-i="workSpec"></div>
+  <div><label>No. of workers exposed</label><input data-i="exposed" inputmode="numeric"></div>
+</div>
+</div></div>
+
+<!-- 2 LAB RESULTS -->
+<div class="sec"><h2>2. Lab results (CoA) and sample data</h2><div class="card">
+<div class="drop noP" id="drop">
+  <div style="font-weight:600;margin-bottom:6px">Upload the lab's Certificate of Analysis (CoA)</div>
+  <div class="muted" style="font-size:13px;margin-bottom:10px">PDF from the lab, Excel/CSV, or a photo. Sample IDs, points, parameters and results (µg/sample) are read automatically. You check them before they're added. The CoA is also attached as Appendix G.</div>
+  <label class="filebtn" style="font-size:14px;padding:8px 14px;background:var(--pri);color:#fff;border-color:var(--pri)">📄 Upload CoA<input type="file" id="coaIn" accept=".pdf,.xlsx,.xls,.csv,image/*"></label>
+</div>
+<div id="review" style="display:none;margin-top:12px"></div>
+
+<h3 style="margin-top:16px">Chemicals / parameters</h3>
+<div class="row noP" style="margin-bottom:8px">
+  <input id="chemSearch" list="chemList" placeholder="🔍 Add a chemical from USECHH 2000 Schedule I. Type a name (English or Malay) or CAS no." style="max-width:560px">
+  <datalist id="chemList"></datalist>
+  <span class="muted" style="font-size:12px">PEL and NIOSH method fill in automatically.</span>
+</div>
+<div class="ts"><table id="tPar"></table></div>
+
+<h3 style="margin-top:18px">Environmental conditions <span class="muted" style="font-weight:400;font-size:12.5px">(key in once, applies to all samples)</span></h3>
+<div class="fg env" id="env">
+  <div><label>Calibration temp. Tc (°C)</label><input data-env="Tc" inputmode="decimal"></div>
+  <div><label>Calibration pressure Pc (mmHg)</label><input data-env="Pc" inputmode="decimal"></div>
+  <div><label>Site temp. T (°C)</label><input data-env="T" inputmode="decimal"></div>
+  <div><label>Site pressure P (mmHg)</label><input data-env="P" inputmode="decimal"></div>
+</div>
+
+<h3 style="margin-top:18px">Sample data <span class="muted" style="font-weight:400;font-size:12.5px">(one card per worker + parameter)</span></h3>
+<div id="groups"></div>
+<div class="row noP" style="margin-top:10px">
+  <button class="pri" id="bAdd">+ Add worker / parameter</button>
+  <button id="bClr">Clear all samples</button>
+</div>
+<label class="toggle noP"><input type="checkbox" id="divTotal"><span>Divide TWA by total sampling duration, like the Excel calculator (turn off to always divide by 480 minutes).</span></label>
+<p class="muted" style="font-size:12px;margin:8px 0 0">fc = pump flow rate (L/min) · t = duration (min) · Pc, Tc = pressure (mmHg) &amp; temperature (°C) at calibration · P, T = pressure &amp; temperature during sampling · Mass = CoA result (µg/sample); “&lt;10” = below detection limit</p>
+</div></div>
+
+<!-- 3 CONTROLS -->
+<div class="sec"><h2>3. Work activities &amp; existing control measures</h2><div class="card">
+<p class="muted" style="margin:0 0 10px;font-size:13px">What you saw on site. The report text in section 6 uses this to judge whether existing controls are adequate and to write the recommendations.</p>
+<div class="fg3">
+  <div><h3>Engineering controls</h3><div id="cEng"></div><input data-c="engOther" placeholder="Other engineering control"></div>
+  <div><h3>Administrative controls</h3><div id="cAdm"></div><input data-c="admOther" placeholder="Other administrative control"></div>
+  <div><h3>Personal protective equipment</h3>
+    <label>Respiratory protection (RPE) used</label><select data-c="rpe" id="cRpe"></select>
+    <label style="margin-top:8px">RPE wearing</label><select data-c="rpeUse"><option value="">—</option><option value="consistent">Worn consistently</option><option value="partial">Worn inconsistently / removed at times</option><option value="no">Not worn</option></select>
+    <label style="margin-top:8px">RPE fit test</label><select data-c="fit"><option value="">—</option><option value="yes">Fit test done</option><option value="no">No fit test</option></select>
+    <div id="cPpe" style="margin-top:10px"></div>
+  </div>
+</div>
+<div class="fg" style="margin-top:12px">
+  <div style="grid-column:span 3"><label>Work activities / process description</label><textarea data-c="activities" rows="3" placeholder="e.g. Crushing, screening and conveying of granite aggregate; loading by wheel loader"></textarea></div>
+  <div style="grid-column:span 3"><label>Site observations</label><textarea data-c="obs" rows="3" placeholder="e.g. Visible dust near primary crusher; water spray not working at conveyor transfer point"></textarea></div>
+</div>
+</div></div>
+
+<!-- 4 CALC -->
+<div class="sec"><h2>4. Calculation sheet (Appendix F)</h2><div class="card">
+<div class="formula">Vm = fc × t × √(Pc × T / P × Tc)<br>Vs = Vm × (P/760) × (298/T)<br>Ci = M(µg) / Vs(L) = mg/m³<br>TWA₈ = Σ(Ci × t) / <span id="divLbl">480</span><br><span class="muted">Tc and T entered in °C, converted to K by +273.</span></div>
+<div id="calc" style="margin-top:10px"></div>
+</div></div>
+
+<!-- 5 SUMMARY -->
+<div class="sec"><h2>5. Results summary (Table 6)</h2><div class="card">
+<div class="ts"><table id="tSum"></table></div>
+</div></div>
+
+<!-- 6 TEXT -->
+<div class="sec"><h2>6. Report text (auto-written)</h2><div class="card">
+<p class="muted" style="margin:0 0 10px;font-size:13px">Written from your results, the PELs, Schedule II and the existing controls in section 3, the way a senior hygiene technician / CHRA assessor would. Edit any section; “Rewrite” rebuilds it from the latest data.</p>
+<div id="texts"></div>
+<button class="noP" id="bRegen">Rewrite all sections from results</button>
+</div></div>
+
+<!-- 7 APPENDICES -->
+<div class="sec"><h2>7. Appendices (attached into the report)</h2><div class="card">
+<p class="muted" style="margin:0 0 10px;font-size:13px">Upload PDF or image files. They're inserted after each appendix title page.</p>
+<div class="att" id="att"></div>
+</div></div>
+
+<!-- 8 DOWNLOAD -->
+<div class="sec"><h2>8. Download</h2><div class="card">
+<div id="readiness"></div>
+<div class="row noP" style="margin-top:8px">
+  <button class="pri" id="bDl">⬇ Download full report…</button>
+  <button id="bXls">Download Excel</button>
+  <button id="bPrint">Print this page</button>
+</div>
+</div></div>
+</div>
+
+<!-- 9 SAVE TO DASHBOARD -->
+<div class="wrap" style="padding-top:0"><div class="sec"><h2>9. Complete &amp; save to dashboard</h2><div class="card">
+<p class="muted" style="margin:0 0 10px;font-size:13px">Records this report in the IH job register on the dashboard, one job per chemical, with the highest TWA vs PEL, the next monitoring due date and next action. Saving again updates the same jobs; it doesn't create duplicates.</p>
+<div class="fg">
+  <div><label>Job status</label><select id="svStatus"><option>Completed</option><option>Reporting</option><option>In progress</option></select></div>
+  <div><label>Person in charge</label><input id="svPic"></div>
+  <div><label>Report date</label><input type="date" id="svDate"></div>
+  <div><label>Request date (optional)</label><input type="date" id="svReq"></div>
+</div>
+<div class="ts" style="margin-top:12px"><table id="svPrev"></table></div>
+<div class="row noP" style="margin-top:12px"><button class="pri" id="bSave">✔ Complete &amp; save to dashboard</button><span id="svMsg" class="muted" style="font-size:13px"></span></div>
+</div></div></div>
+
+<div class="modal" id="mRep"><div class="box">
+  <div class="row" style="justify-content:space-between"><h3 style="margin:0">CEM reports (saved online)</h3><button onclick="document.getElementById('mRep').classList.remove('show')">Close</button></div>
+  <input id="repQ" placeholder="Search report no. or client" style="margin:10px 0">
+  <div class="ts"><table id="repList"></table></div>
+</div></div>
+<div class="modal" id="mDl"><div class="box">
+  <h3 style="margin:0">Download full report</h3>
+  <p class="muted" style="margin:4px 0 0;font-size:13px">Both include the cover, all sections, Appendix F calculations and your attached appendices.</p>
+  <div class="choice">
+    <button id="dlPdf">📕 PDF file<span>Final, ready to send</span></button>
+    <button id="dlDoc">📘 Word file (.docx)<span>Editable</span></button>
+  </div>
+  <p class="muted" style="font-size:12px;margin:0 0 10px">In Word, attached PDFs are inserted as page images. Word may ask to update the table of contents when it opens. Click Yes.</p>
+  <div class="row" style="justify-content:space-between"><label class="chk" style="margin:0"><input type="checkbox" id="dlPreview">Open preview instead of downloading (PDF)</label><button onclick="document.getElementById('mDl').classList.remove('show')">Cancel</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+<div class="busy" id="busy"><div id="busyMsg">Working…</div></div>
+<script src="cem-app.js"></script>
+<script src="cem-report.js"></script>
+</body>
+</html>

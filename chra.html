@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>CHRA — Report Generator</title>
-<link rel="stylesheet" href="ih-modules.css">
+<link rel="stylesheet" href="ih-modules.css?v=20261102a">
+<script>document.write('<script src="config.js?v='+Date.now()+'"><\/script>')</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"></script>
 </head><body>
-<div class="top noP"><a href="index.html">← Back to dashboard</a><a href="cem.html">🧪 CEM</a><a href="noise.html">🔊 Noise</a>
+<div class="top noP"><a href="index.html">← Back to dashboard</a><a href="cem.html">🧪 CEM</a><a href="noise.html">🔊 Noise</a><span id="cloudSt" style="font-size:12.5px;opacity:.95;margin-left:6px"></span>
  <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button class="tb" id="bSample">📂 Load previous project</button>
  <label class="tb filebtn" style="background:rgba(255,255,255,.12);color:#fff">⬆ Restore JSON<input type="file" id="inJson" accept=".json"></label>
- <button class="tb" id="bBackup">⬇ Backup JSON</button><button class="tb" id="bNew">+ New report</button><button class="tb" id="bTheme">◐</button></span></div>
+ <button class="tb" id="bBackup">⬇ Backup JSON</button><button class="tb" id="bNew">+ New report</button><button class="tb" id="bWipe" title="Clear all data in this report">🗑 Clear data</button><button class="tb" id="bTheme">◐</button></span></div>
 <div class="wrap">
 <h1>⚗️ Chemical Health Risk Assessment (CHRA) — Report Generator</h1>
 <p class="lead">USECHH Regulations 2000 · DOSH CHRA Manual 3rd Edition (2018). Import each work unit's "Forms A to D" Excel or key in the data; FDR, ER, RR, risk levels and Action Priority are recalculated and checked. Data is saved automatically in this browser.</p>
@@ -35,14 +37,15 @@
 <div class="sec"><h2>3. Summary</h2><div class="card"><div class="kpi" id="kpi"></div><div class="ts" id="sum"></div></div></div>
 <div class="sec"><h2>4. QA check (assessor review)</h2><div class="card" id="qa"></div></div>
 <div class="sec"><h2>5. Report text (auto-written, editable)</h2><div class="card" id="texts"></div></div>
-<div class="sec"><h2>6. Download</h2><div class="card"><div class="row"><button class="pri" id="bWord">⬇ Download Word report (.docx)</button><button id="bPrev">🖨 Preview / Save as PDF</button></div>
- <p class="muted" style="font-size:12px">Word asks to update fields on opening — click Yes for the table of contents. Attach Appendix 1 (signed Forms A–D PDFs), 2, 3 and 4 after generating.</p></div></div>
+<div class="sec"><h2>6. Appendices (attached into the report)</h2><div class="card"><p class="muted" style="margin:0 0 10px;font-size:13px">Upload PDF or image files (e.g. the signed Forms A–D PDFs). They're inserted after each appendix title page in the Word report and the PDF preview.</p><div id="att"></div></div></div>
+<div class="sec"><h2>7. Download</h2><div class="card" id="dl"></div></div>
 </div>
-<script src="ih-common.js"></script><script src="chra-sample.js"></script><script src="chra-app.js"></script>
+<div class="wrap" style="padding-top:0"><div class="sec"><h2>8. Complete &amp; save to dashboard</h2><div class="card" id="dash"></div></div></div>
+<script src="ih-common.js?v=20261102a"></script><script src="chra-sample.js?v=20261102a"></script><script src="chra-app.js?v=20261102a"></script>
 <script>
-let cur=0;
+let cur=0,dash=null;
 const lvlPill=l=>`<span class="pill ${l==="High"?"p-over":l==="Moderate"?"p-warn":l==="Low"?"p-safe":""}">${l}</span>`;
-function refresh(){const a=analyse();save();const T=a.T;
+function refresh(){const a=analyse();save();if(dash)dash.refresh();if(dl)dl.refresh();const T=a.T;
   $("#kpi").innerHTML=`<div>Work units<b>${st.wus.length}</b></div><div>Chemicals<b>${T.nchem}</b></div><div>Inhalation H/M/L<b>${T.inhH}/${T.inhM}/${T.inhL}</b></div><div>Dermal H/M/L<b>${T.derH}/${T.derM}/${T.derL}</b></div><div>Ingestion<b>${T.ing}</b></div><div>AP1/AP2/AP3<b>${T.ap1}/${T.ap2}/${T.ap3}</b></div>`;
   $("#sum").innerHTML=`<table><tr><th>Work unit</th><th>Chem.</th><th>Inh H</th><th>Inh M</th><th>Inh L</th><th>Derm H</th><th>Derm M</th><th>Derm L</th><th>Ingest</th><th>AP1</th><th>AP2</th><th>AP3</th><th>Source</th></tr>${a.W.map(({w,s})=>`<tr><td>${esc(w.name)}</td>${["nchem","inhH","inhM","inhL","derH","derM","derL","ing","ap1","ap2","ap3"].map(k=>`<td class="n">${s[k]??0}</td>`).join("")}<td>${s.summaryOnly?'<span class="pill p-warn">summary only</span>':'<span class="pill p-safe">Forms A–D</span>'}</td></tr>`).join("")}</table>`;
   const Q=qa(a);$("#qa").innerHTML=Q.length?Q.map(([c,m])=>`<div class="${c==="err"?"err":"note"}">${c==="err"?"⛔":c==="warn"?"⚠":"ℹ"} ${esc(m)}</div>`).join(""):`<div class="ok">✔ No issues found.</div>`;
@@ -75,21 +78,30 @@ function drawWU(){const w=st.wus[cur],el=$("#wu");if(!w){el.innerHTML='<p class=
   editTable($("#tD3"),[{k:"existing",h:"Emergency response preparedness",type:"area",w:320},{k:"adequacy",h:"Adequate",type:"select",opts:["","Y","N","NA"]},{k:"rec",h:"Recommendation",type:"area",w:320}],w.erp,ch);
   editTable($("#tD5"),[{k:"chem",h:"Chemical requiring specific action"},{k:"rec",h:"Recommendation",type:"area",w:360}],w.specific,ch);
   $("#bDelWU").onclick=()=>{if(confirm(`Remove work unit "${w.name}"?`)){st.wus.splice(cur,1);cur=0;drawTabs();drawWU();refresh()}}}
-function drawAll(){companyCard($("#coCard"),st.info,()=>save());bindFields($("#fInfo"),st.info,()=>refresh());
+function drawAll(){st.att=st.att||{};companyCard($("#coCard"),st.info,()=>save());bindFields($("#fInfo"),st.info,()=>refresh());
   editTable($("#tPrev"),[{k:"rec",h:"Recommendation",type:"area",w:300},{k:"ap",h:"AP"},{k:"wu",h:"Work unit"},{k:"obs",h:"Site observation (current)",type:"area",w:300}],st.prev,()=>refresh());
   $("#texts").innerHTML=TEXTS.map(([k,l])=>`<div class="tx" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>${esc(l)}</b><button class="sm noP" data-rw="${k}">↻ Rewrite from data</button></div><textarea data-tx="${k}"></textarea></div>`).join("");
   $$("[data-tx]").forEach(el=>{el.value=st.text[el.dataset.tx]??"";el.oninput=()=>{st.text[el.dataset.tx]=el.value;save()}});
   $$("[data-rw]").forEach(b=>b.onclick=()=>{delete st.text[b.dataset.rw];refresh()});
+  appendixCards($("#att"),chraAppx(),st.att,()=>{save();dl&&dl.refresh()});dash=dashboardCard($("#dash"),dashJobs,st.info);mkDl();
   if(cur>=st.wus.length)cur=0;drawTabs();drawWU();refresh()}
 $("#bSample").onclick=()=>{if(st.wus.length&&!confirm("Replace current data with the previous project (PCM Klang Motor – Toyota Body & Paint Kapar CHRA 2026)?"))return;st=structuredClone(window.CHRA_SAMPLE);applyCompanyDefault(st.info);cur=0;drawAll();toast("Previous project loaded")};
 $("#bNew").onclick=()=>{if(!confirm("Start a new blank CHRA report? Download a JSON backup first if needed."))return;st=structuredClone(BLANK);applyCompanyDefault(st.info);cur=0;drawAll()};
+$("#bWipe").onclick=async()=>{if(!confirm("Clear ALL data in this report (results, text and attached appendix files)? Company details and logo are kept. Download a JSON backup first if you need it."))return;
+  for(const fs of Object.values(st.att||{}))for(const f of fs)await fileDB.del("file:"+f.id).catch(()=>{});
+  st=structuredClone(BLANK);applyCompanyDefault(st.info);if(typeof cur!=="undefined")cur=0;save();drawAll();toast("Report data cleared")};
 $("#bBackup").onclick=()=>backupJson(st,`CHRA_${(st.info.clientShort||st.info.client||"report").replace(/\W+/g,"_")}.json`);
 $("#inJson").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{st={...structuredClone(BLANK),...await readJsonFile(f)};cur=0;drawAll();toast("Restored")}catch(err){toast("Invalid JSON file")}e.target.value=""};
 $("#inForms").onchange=async e=>{let n=[];for(const f of e.target.files){try{const w=await importForms(f);if(w)n.push(w.name)}catch(err){console.error(err);toast(`Could not read ${f.name}`)}}e.target.value="";drawAll();if(n.length)toast(`Imported: ${n.join(", ")}`)};
 $("#bAddWU").onclick=()=>{st.wus.push(newWU(prompt("Work unit name","")||"New work unit"));cur=st.wus.length-1;drawAll()};
-$("#bWord").onclick=()=>downloadWord(model(),META(),`CHRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""),st.info);
-$("#bPrev").onclick=()=>previewBlocks(model(),META(),st.info);
+const doWord=()=>downloadWord(model(),META(),`CHRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""),st.info),doPdf=()=>previewBlocks(model(),META(),st.info);
+let dl=null;function mkDl(){dl=downloadSection($("#dl"),{word:doWord,pdf:doPdf,att:()=>st.att,appx:chraAppx,xlsName:()=>`CHRA ${st.info.client||"report"}.xlsx`,
+  missing:()=>{const A=analyse();return[!st.info.client&&"client name",!st.wus.length&&"work units",!st.info.assessor&&"CHRA assessor",...A.W.filter(x=>x.s.summaryOnly).map(x=>`Forms A–D for ${x.w.name}`)].filter(Boolean)},
+  excel:()=>{const A=analyse(),rows=[["Work unit","Chemicals","Inh High","Inh Moderate","Inh Low","Derm High","Derm Moderate","Derm Low","Ingestion","AP1","AP2","AP3"],...A.W.map(({w,s})=>[w.name,s.nchem,s.inhH,s.inhM,s.inhL,s.derH,s.derM,s.derL,s.ing,s.ap1,s.ap2,s.ap3])];
+    const inh=[["Work unit","Job / task","Chemical","FR","DR","FDR","MR","ER","HR","RR","Risk"]];A.W.forEach(({w,s})=>w.inh.forEach((r,i)=>inh.push([w.name,r.task,r.chem,r.fr,r.dr,s.I[i].fdr,r.mr,s.I[i].er,r.hr,s.I[i].rr??"ND",s.I[i].lvl])));
+    const chem=[["Work unit","Chemical","Hazardous ingredient","Form","Hazard classification","H-code","Source","HR","Dermal","Ingestion"]];st.wus.forEach(w=>w.chems.forEach(c=>chem.push([w.name,c.name,c.ingr,c.form,c.hclass,c.hcode,c.src,c.hr,c.dermal,c.ingest])));
+    return[["Summary",rows],["Inhalation (C1)",inh],["Chemicals (B)",chem]]}})}
 $("#bTheme").onclick=()=>{const d=document.documentElement;d.dataset.theme=d.dataset.theme==="dark"?"":"dark";localStorage.setItem("ihcc_theme",d.dataset.theme)};
 document.documentElement.dataset.theme=localStorage.getItem("ihcc_theme")||"";
-drawAll();
+drawAll();initCloud();
 </script></body></html>

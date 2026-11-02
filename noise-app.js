@@ -2,14 +2,21 @@
 const KEY="ihcc_noise1";
 const LIM={exc:82,nel:85,max:115,peak:140};
 const BLANK={info:{type:"Initial",workplace:"workplace",phpNrr:"24",phpModel:"",workDays:"Monday - Friday",workHours:"8:00 am – 5:00 pm",breaks:"Lunch Break 1.00 pm – 2.00 pm",exposureType:"Continuous & Intermittent",nature:"Routine"},
-  inst:[],seg:[],area:[],src:[],ctl:{eng:[],adm:[],warn:[]},php:[],personal:[],text:{}};
+  inst:[],seg:[],area:[],src:[],ctl:{eng:[],adm:[],warn:[]},php:[],personal:[],text:{},att:{}};
 let st=Store.load(KEY,BLANK);if(!st.info.consName)applyCompanyDefault(st.info);
-const save=()=>Store.save(KEY,st);
+st.att=st.att||{};
+const NOISE_APPX=[["A","PROCESS FLOWCHART"],["B","SITE LAYOUT WITH EQUIPMENT AND PERSONNEL MONITORED"],["C","NOISE MAPPING"],["D","PERSONAL DATA SHEET"],["E","COMPUTER PRINT OUT"],["F","CALIBRATION CERTIFICATE"],["G","NOISE RISK ASSESSOR CERTIFICATE"],["H","FORM A (BORANG PENGESAHAN MAJIKAN)"],["I","AREA & PERSONNEL MONITORING PHOTOS"]];
+/* equipment history: every report's instrument list is kept so it can be copied into the next report */
+const EQ_HIST="ihcc_noise_equip_hist";
+function equipHistory(){try{return JSON.parse(localStorage.getItem(EQ_HIST))||[]}catch(e){return[]}}
+function rememberEquip(){if(!st.inst.length||!st.inst.some(i=>i.id||i.inst))return;const label=`${st.info.client||"(no client)"} – ${st.info.reportNo||st.info.dates||"draft"}`;
+  const h=equipHistory().filter(x=>x.label!==label);h.unshift({label,at:new Date().toISOString(),inst:st.inst});try{localStorage.setItem(EQ_HIST,JSON.stringify(h.slice(0,25)))}catch(e){}}
+const save=()=>{Store.save(KEY,st);clearTimeout(save._t);save._t=setTimeout(rememberEquip,1500)};
 
 /* ---------- calculations ---------- */
 function hrs(d){const m=String(d||"").match(/(\d+):(\d{1,2})(?::(\d{1,2}))?/);if(!m)return num(d);return +m[1]+(+m[2])/60+(+(m[3]||0))/3600}
-/* Average of area readings = logarithmic (energy) average of Min and Max */
-const avgOf=a=>{const lo=num(a.min),hi=num(a.max);return lo!=null&&hi!=null?10*Math.log10((Math.pow(10,lo/10)+Math.pow(10,hi/10))/2):num(a.avg)};
+/* Average of area readings = logarithmic (energy) average of the readings entered (Min, Max, L(average)) */
+const avgOf=a=>{const v=[a.min,a.max,a.lavg].map(num).filter(x=>x!=null);return v.length>=2?10*Math.log10(v.reduce((s,x)=>s+Math.pow(10,x/10),0)/v.length):num(a.avg)};
 const zone=l=>l==null?"":l>115?"Purple":l>85?"Red":l>82?"Yellow":"White";
 const ZFILL={Purple:"D9B3FF",Red:"FF9999",Yellow:"FFF2A8",White:"FFFFFF"};
 const yn=b=>b?"YES":"NO";
@@ -112,7 +119,7 @@ function model(){const I=st.info,a=analyse(),B=[],T=(cap,head,rows,o={})=>B.push
   /* 4.0 */
   B.push({t:"h1",x:"4.0 INSTRUMENTATION"},{t:"p",x:"Regulation 4(3) of the OSH (Noise Exposure) Regulations 2019 stipulates that the noise risk assessor shall carry out the noise risk assessment using noise measuring equipment which complies with the standards determined by the International Electrotechnical Commission (IEC). The sound level meter meets IEC 61672-1, the noise dosimeter meets IEC 61252 and the acoustic calibrator meets IEC 60942 Class 1."},
     {t:"p",x:"The sound level meter and noise dosimeters were field-calibrated before and after the monitoring; the deviation from the calibration value was within ±0.5 dB, otherwise monitoring is repeated. Calibration details are shown in the computer printout (Appendix E) and calibration certificates in Appendix F."});
-  T("Table 3: Details of Instruments Used During the Noise Risk Assessment",["Instrument","Manufacturer","Model","Equipment ID","Calibration Validity Period"],st.inst.map(i=>[i.inst,i.mfr,i.model,i.id,i.cal]));
+  T("Table 3: Details of Instruments Used During the Noise Risk Assessment",["Instrument","Manufacturer","Model","Equipment ID","Calibration Validity Period","Photo"],st.inst.map(i=>[i.inst,i.mfr,i.model,i.id,i.cal,(i.photos||[]).length?"":"–"]),{photoCol:5,photos:st.inst.map(i=>i.photos||[])});
   /* 5.0 */
   B.push({t:"h1",x:"5.0 METHODOLOGY"},{t:"h2",x:"5.1 Noise Source Monitoring"},{t:"p",x:"Noise source measurements were taken with the sound level meter microphone pointed toward the noise source at about one metre above ground level and about one metre from the source. At least three measurements were taken for each noise source and the average recorded. Measurements were corrected for background noise where the source could be stopped; otherwise the level was taken with the source in operation."},
     {t:"h2",x:"5.2 Noise Mapping"},{t:"p",x:"Noise mapping was carried out using the sound level meter at grid positions throughout the selected areas, and the workplace was demarcated into colour zones representing the degree of noise exposure."});
@@ -134,8 +141,8 @@ function model(){const I=st.info,a=analyse(),B=[],T=(cap,head,rows,o={})=>B.push
   B.push({t:"h1",x:"6.0 RESULTS"},{t:"h2",x:"6.1 Area Noise Exposure Monitoring"},{t:"p",x:`Area noise monitoring was carried out with equipment operating under usual conditions. Noise sources, types and levels measured at the ${W} are tabulated below.`});
   const fill7={};a.A.forEach((x,i)=>{if(ZFILL[x.z]&&x.z!=="White")fill7[i+",6"]=ZFILL[x.z]});
   T(`Table 7: Area Noise Exposure Monitoring Results for ${I.client}`,["No.","Working Area","Job Specification & Task","No. of Personnel","Personnel Monitored","Source of Noise","Noise Level dB(A) range (avg)","Type","Colour Zone"],
-    a.A.map((x,i)=>[i+1,x.area,x.task,x.n,x.mon,x.src,`${x.min} – ${x.max}\n(${f1(x.avgN)})`,x.type,x.z]),{small:true,fill:Object.fromEntries(Object.entries(fill7).map(([k,v])=>[k.replace(",6",",8"),v]))});
-  B.push({t:"p",i:true,x:"Notes: Average = logarithmic (energy) average of the minimum and maximum readings, Lavg = 10 log[(10^(Lmin/10) + 10^(Lmax/10)) / 2]. SCN = Steady Continuous Noise; FCN = Fluctuating Continuous Noise; IMP = Impulse/Impact noise. Noise point locations: Appendix C – Noise Mapping."},
+    a.A.map((x,i)=>[i+1,x.area,x.task,x.n,x.mon,x.src,`${x.min} – ${x.max}${x.lavg!==""&&x.lavg!=null?`\nL(avg) ${x.lavg}`:""}\n(Avg ${f1(x.avgN)})`,x.type,x.z]),{small:true,fill:Object.fromEntries(Object.entries(fill7).map(([k,v])=>[k.replace(",6",",8"),v]))});
+  B.push({t:"p",i:true,x:"Notes: Avg = logarithmic (energy) average of the minimum, maximum and L(average) readings, Avg = 10 log[(10^(Lmin/10) + 10^(Lmax/10) + 10^(Lavg/10)) / 3]. SCN = Steady Continuous Noise; FCN = Fluctuating Continuous Noise; IMP = Impulse/Impact noise. Noise point locations: Appendix C – Noise Mapping."},
     {t:"h2",x:"6.2 Noise Mapping"},{t:"p",x:`The noise mapping was done based on the ${W} layout and is attached in Appendix C.`},{t:"h2",x:"6.3 Personal Noise Exposure Monitoring"},
     {t:"p",x:"Details of the personnel monitored are listed in Appendix D – Personal Data Sheet and the dosimeter printouts in Appendix E."});
   a.dates.forEach((d,di)=>{const rows=a.P.filter(p=>p.date===d),fill={};
@@ -178,7 +185,8 @@ function model(){const I=st.info,a=analyse(),B=[],T=(cap,head,rows,o={})=>B.push
     "Record keeping: keep the noise risk assessment report, audiometric test records and training records for the period required by the Regulations."]});
   B.push({t:"h1",x:"9.0 CONCLUSION"},{t:"p",x:textOf("concl",a)});
   B.push({t:"h1",x:"10.0 RESOURCES"},{t:"ul",items:["Occupational Safety and Health Act 1994 (Act 514).","Occupational Safety and Health (Noise Exposure) Regulations 2019.","Industry Code of Practice for Management of Occupational Noise Exposure and Hearing Conservation 2019, DOSH Malaysia.","Guidelines on Noise Risk Assessment, DOSH Malaysia.","IEC 61672-1, IEC 61252 and IEC 60942 instrument standards."]});
-  B.push({t:"h1",x:"11.0 APPENDICES"},{t:"ul",items:["A. Process Flowchart","B. Site Layout with Equipment and Personnel Monitored","C. Noise Mapping","D. Personal Data Sheet","E. Computer Print Out","F. Calibration Certificate","G. Noise Risk Assessor Certificate","H. Form A (Borang Pengesahan Majikan)","I. Area & Personnel Monitoring Photos"]});
+  B.push({t:"h1",x:"11.0 APPENDICES"},{t:"ul",items:NOISE_APPX.map(([L,T])=>`Appendix ${L}: ${T}`)});
+  NOISE_APPX.forEach(([L,T])=>B.push({t:"appx",L,T,files:st.att[L]||[]}));
   return B}
 const META=()=>({title:`${st.info.type} Noise Risk Assessment – ${st.info.client}`,header:`${st.info.type} Noise Risk Assessment | ${st.info.client} | ${st.info.month||""}`,
   footer:`This report shall not be reproduced, distributed or copied without prior written consent of ${st.info.consName||"the consultant"}.`});
@@ -197,3 +205,12 @@ async function importDatasheet(file){const wb=await readWorkbook(file);const sm=
     const rec={date,seg:cellTxt(r[cSeg]),name:nm,area:cellTxt(r[cArea]),dosi:ids[nm]||"",dur:cellTxt(dur),leq:v(2),max:v(4),peak:v(5)};
     const i=st.personal.findIndex(p=>p.name===nm&&p.date===date);if(i>=0)st.personal[i]={...st.personal[i],...rec};else st.personal.push(rec);n++});
   return n}
+
+/* ---------- dashboard jobs: one per SEG (highest LEX,8h vs NEL 85 dB(A)) ---------- */
+function dashJobs(o){const I=st.info,a=analyse(),base=`nra-${slugId(I.reportNo||I.client)}`;
+  return st.seg.map(g=>{const ps=a.P.filter(p=>segOf(p)===g);if(!ps.length)return null;const w=ps.reduce((x,y)=>(y.r.lex??0)>(x.r.lex??0)?y:x);
+    const over=ps.some(p=>p.r.nel||p.r.emx||p.r.epk),exc=ps.some(p=>p.r.excessive);
+    return baseJob({id:`${base}-${slugId(g.seg)}`,title:`NRA – ${g.seg} (${I.workplace||"workplace"})`,reportNo:I.reportNo||"",location:I.locName||I.client||"",category:"Noise",pic:o.pic,
+      priority:over?"Critical":exc?"High":"Normal",status:o.status,requestDate:o.req||o.date,deadline:o.date,result:+f1(w.r.lex),unit:"dBA",nab:85,recur:0,
+      nextAction:over?"Implement noise controls & HCP (PHP, training, audiometric testing); repeat noise monitoring after controls":exc?"Hearing conservation training & annual audiometric testing; maintain controls":"Maintain controls; review NRA within 5 years",
+      notes:`From Noise report. Highest LEX,8h: ${w.name} ${f1(w.r.lex)} dB(A); Max ${f1(w.r.mx)} dB(A); Peak ${f1(w.r.pk)} dB(C). Client: ${I.client||"-"}.`})}).filter(Boolean)}

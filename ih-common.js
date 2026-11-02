@@ -50,6 +50,10 @@ function wordFromBlocks(B,meta){
   const out=[];
   for(const b of B){
     if(b.t==="cover2"){out.push(...coverWord(D,b.c,meta.logo,run))}
+    else if(b.t==="appx"){out.push(new D.Paragraph({children:[new D.PageBreak()]}),new D.Paragraph({heading:D.HeadingLevel.HEADING_1,alignment:D.AlignmentType.CENTER,spacing:{before:3600,after:200},children:[run(`APPENDIX ${b.L}: ${b.T}`,{size:30,bold:true,color:NAVY})]}));
+      const ims=(meta.media&&meta.media.appx[b.L])||[];if(!ims.length)out.push(P("(No document attached)",{center:true,color:"6B7280"}));
+      ims.forEach(x=>{if(x.err){out.push(P(x.err,{color:"C0392B"}));return}const s=Math.min(600/x.w,860/x.h,1);
+        out.push(new D.Paragraph({children:[new D.PageBreak()]}),new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[new D.ImageRun({type:/png/i.test(x.type)?"png":"jpg",data:new Uint8Array(x.data),transformation:{width:Math.round(x.w*s),height:Math.round(x.h*s)}})]}))})}
     else if(b.t==="cover"){b.lines.forEach(l=>out.push(P(l.x,{size:l.size||24,bold:l.bold,center:true,after:l.after??160})))}
     else if(b.t==="h1")out.push(new D.Paragraph({heading:D.HeadingLevel.HEADING_1,children:[run(b.x,{size:26,bold:true,color:NAVY})],spacing:{before:240,after:120}}));
     else if(b.t==="h2")out.push(new D.Paragraph({heading:D.HeadingLevel.HEADING_2,children:[run(b.x,{size:22,bold:true,color:NAVY})],spacing:{before:160,after:80}}));
@@ -64,7 +68,8 @@ function wordFromBlocks(B,meta){
       const ncol=(head||rows[0]||[]).length||1;
       const mk=(cells,isHead,ri)=>new D.TableRow({tableHeader:isHead,cantSplit:true,children:cells.map((c,ci)=>{
         const fill=isHead?NAVY:(b.t==="kv"&&ci===0?"DEEAF6":(b.fill&&b.fill[ri+","+ci])||(b.rowFill&&b.rowFill[ri])||undefined);
-        return new D.TableCell({children:cellP(c,{size:sz,bold:isHead||(b.t==="kv"&&ci===0),color:isHead?"FFFFFF":undefined}),
+        const pics=!isHead&&b.photoCol===ci&&b.photos&&meta.media?(b.photos[ri]||[]).map(id=>meta.media.photos[id]).filter(Boolean):[];
+        return new D.TableCell({children:pics.length?pics.map(x=>{const k=Math.min(110/(x.w||110),80/(x.h||80),1);return new D.Paragraph({spacing:{after:40},children:[new D.ImageRun({type:/png/i.test(x.type)?"png":"jpg",data:new Uint8Array(x.data),transformation:{width:Math.round((x.w||110)*k),height:Math.round((x.h||80)*k)}})]})}):cellP(c,{size:sz,bold:isHead||(b.t==="kv"&&ci===0),color:isHead?"FFFFFF":undefined}),
           shading:fill?{type:D.ShadingType.CLEAR,color:"auto",fill}:undefined,
           width:(b.w||(b.t==="kv"?[32,68]:null))?{size:(b.w||[32,68])[ci],type:D.WidthType.PERCENTAGE}:undefined,margins:{top:40,bottom:40,left:70,right:70}})})});
       const trs=[];if(head)trs.push(mk(head,true));rows.forEach((r,i)=>trs.push(mk(r,false,i)));
@@ -75,13 +80,16 @@ function wordFromBlocks(B,meta){
   const ftr=new D.Footer({children:[new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[run(meta.footer+"   Page ",{size:14}),new D.TextRun({children:[D.PageNumber.CURRENT],size:14,font:FONT})]})]});
   return new D.Document({creator:meta.creator||"IH-4",title:meta.title,features:{updateFields:true},
     sections:[{properties:{page:{margin:{top:1100,bottom:1100,left:1200,right:1200}}},headers:{default:hdr},footers:{default:ftr},children:out}]})}
-async function downloadWord(B,meta,name,info){if(info)meta.logo=await getLogo(info);const doc=wordFromBlocks(B,meta);if(!doc)return;const blob=await docx.Packer.toBlob(doc);download(blob,name);toast("Word report downloaded")}
+async function downloadWord(B,meta,name,info){if(info)meta.logo=await getLogo(info);toast("Preparing Word report…",4000);meta.media=await prepareMedia(B);const doc=wordFromBlocks(B,meta);if(!doc)return;const blob=await docx.Packer.toBlob(doc);download(blob,name);toast("Word report downloaded")}
 
 /* ---------- Report block model → printable HTML (Save as PDF from the browser) ---------- */
 async function previewBlocks(B,meta,info){const w=window.open("","_blank");if(!w){toast("Allow pop-ups to open the preview");return}
-  const lg=info?await getLogo(info):null,lu=lg?URL.createObjectURL(new Blob([lg.data],{type:lg.type})):"";
+  const lg=info?await getLogo(info):null,lu=lg?URL.createObjectURL(new Blob([lg.data],{type:lg.type})):"";const M=await prepareMedia(B);
   const h=[];for(const b of B){
     if(b.t==="cover2"){h.push(coverHtml(b.c,lu));continue}
+    if(b.t==="appx"){h.push(`<div class="pb"></div><h1 style="text-align:center;border:none;margin-top:300px">APPENDIX ${esc(b.L)}: ${esc(b.T)}</h1>`);const ims=M.appx[b.L]||[];if(!ims.length)h.push(`<p style="text-align:center;color:#6B7280">(No document attached)</p>`);
+      ims.forEach(x=>h.push(x.err?`<p style="color:#C0392B">${esc(x.err)}</p>`:`<div class="pb"></div><img src="${URL.createObjectURL(new Blob([x.data],{type:x.type}))}" style="max-width:100%">`));continue}
+    if(b.t==="table"&&b.photos){h.push(`${b.cap?`<div class="cap">${esc(b.cap)}</div>`:""}<table><thead><tr>${b.head.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead>${b.rows.map((r,ri)=>`<tr>${r.map((c,ci)=>`<td>${ci===b.photoCol?(b.photos[ri]||[]).map(id=>M.photos[id]?`<img src="${URL.createObjectURL(new Blob([M.photos[id].data],{type:M.photos[id].type}))}" style="max-width:110px;max-height:80px;display:block;margin:2px 0">`:"").join(""):esc(c).replace(/\n/g,"<br>")}</td>`).join("")}</tr>`).join("")}</table>`);continue}
     if(b.t==="cover")h.push(`<div class="cover">${b.lines.map(l=>`<div style="font-size:${(l.size||24)/2+2}px;${l.bold?"font-weight:700;":""}margin-bottom:${(l.after??160)/16}px">${esc(l.x).replace(/\n/g,"<br>")}</div>`).join("")}</div>`);
     else if(b.t==="h1")h.push(`<h1>${esc(b.x)}</h1>`);else if(b.t==="h2")h.push(`<h2>${esc(b.x)}</h2>`);else if(b.t==="h3")h.push(`<h3>${esc(b.x)}</h3>`);
     else if(b.t==="p")h.push(`<p style="${b.i?"font-style:italic;":""}${b.bold?"font-weight:700":""}">${esc(b.x).replace(/\n/g,"<br>")}</p>`);
@@ -151,3 +159,86 @@ function coverHtml(c,logoUrl){const e=s=>esc(s).replace(/\n/g," ");
   ${(c.locName||"").trim()&&c.locName.trim().toLowerCase()!==(c.client||"").trim().toLowerCase()?`<div style="font-weight:700;margin-top:14px">${e(c.locName.toUpperCase())}</div>`:""}
   <div style="font-weight:700;margin:12px 60px 50px">${e(String(c.locAddr||"").toUpperCase())}</div>
   <table style="width:auto;margin:0 auto;font-weight:700;font-size:9.5pt;border:none">${c.rows.filter(r=>r[1]!==null).map(([k,v])=>`<tr><td style="border:none;text-align:left;padding:3px 12px">${e(k)}</td><td style="border:none;text-align:left">: ${e(String(v||"-").toUpperCase())}</td></tr>`).join("")}</table></div>`}
+
+/* ---------- Files & photos (same IndexedDB as CEM: "ihcc_cem_files") ---------- */
+const fileDB={get:k=>logoDB.tx("readonly",s=>s.get(k)),put:(k,v)=>logoDB.tx("readwrite",s=>s.put(v,k)),del:k=>logoDB.tx("readwrite",s=>s.delete(k))};
+async function shrinkImage(file,max=900){const bmp=await createImageBitmap(file),k=Math.min(1,max/Math.max(bmp.width,bmp.height)),c=document.createElement("canvas");
+  c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);
+  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.86));return{type:"image/jpeg",data:await blob.arrayBuffer(),w:c.width,h:c.height}}
+const _thumb={};async function photoURL(id){if(_thumb[id])return _thumb[id];const p=await fileDB.get("photo:"+id).catch(()=>null);if(!p)return"";return _thumb[id]=URL.createObjectURL(new Blob([p.data],{type:p.type}))}
+const PDFJS="https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/";let _pdfjs=null;
+async function getPdfjs(){if(_pdfjs)return _pdfjs;const m=await import(PDFJS+"pdf.min.mjs");m.GlobalWorkerOptions.workerSrc=PDFJS+"pdf.worker.min.mjs";return _pdfjs=m}
+async function pdfPagesAsPng(bytes,scale=1.6){const lib=await getPdfjs(),doc=await lib.getDocument({data:new Uint8Array(bytes.slice(0))}).promise,out=[];
+  for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),vp=pg.getViewport({scale}),c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;
+    const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:g,viewport:vp}).promise;
+    const blob=await new Promise(r=>c.toBlob(r,"image/png"));out.push({type:"image/png",data:await blob.arrayBuffer(),w:c.width,h:c.height})}return out}
+async function imgOf(fl){if(/png|jpe?g/i.test(fl.type)){const bmp=await createImageBitmap(new Blob([fl.data],{type:fl.type}));return{type:fl.type,data:fl.data,w:bmp.width,h:bmp.height}}
+  const bmp=await createImageBitmap(new Blob([fl.data],{type:fl.type})),c=document.createElement("canvas");c.width=bmp.width;c.height=bmp.height;c.getContext("2d").drawImage(bmp,0,0);
+  const blob=await new Promise(r=>c.toBlob(r,"image/png"));return{type:"image/png",data:await blob.arrayBuffer(),w:c.width,h:c.height}}
+/* Load equipment photos and appendix files used by a block model (for Word / preview) */
+async function prepareMedia(B){const M={photos:{},appx:{}};
+  for(const b of B){if(b.photos)for(const ids of b.photos)for(const id of ids||[]){if(M.photos[id])continue;const p=await fileDB.get("photo:"+id).catch(()=>null);if(p)M.photos[id]=p}
+    if(b.t==="appx"){const out=[];for(const f of b.files||[]){const fl=await fileDB.get("file:"+f.id).catch(()=>null);if(!fl){out.push({err:`${f.name}: file not found on this device`});continue}
+      try{if(/pdf/i.test(fl.type)||/\.pdf$/i.test(fl.name)){toast(`Adding ${f.name}…`,1500);(await pdfPagesAsPng(fl.data)).forEach(x=>out.push(x))}else out.push(await imgOf(fl))}
+      catch(e){console.error(e);out.push({err:`Could not attach ${f.name}: ${e.message||e}`})}}M.appx[b.L]=out}}
+  return M}
+/* Appendix upload cards (CEM section 7 style). list=[[L,title]], att={L:[{id,name,type}]} */
+function appendixCards(el,list,att,onChange){const tt=t=>t.toLowerCase().replace(/(^|\s|\()\w/g,c=>c.toUpperCase());
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">${list.map(([L,T])=>{const fs=att[L]||[];
+    return`<div class="card" style="padding:10px 12px"><div class="row" style="justify-content:space-between"><b>Appendix ${L}: ${esc(tt(T))}</b>
+    <label class="filebtn noP">+ Add file<input type="file" data-up="${L}" accept=".pdf,image/png,image/jpeg,image/webp" multiple></label></div>
+    ${fs.length?`<ul style="margin:6px 0 0;padding-left:18px;font-size:12.5px">${fs.map(x=>`<li>${esc(x.name)} <button class="sm noP" data-rm="${L}:${x.id}">remove</button></li>`).join("")}</ul>`:`<div class="muted" style="font-size:12.5px;margin-top:6px">No file yet</div>`}</div>`}).join("")}</div>`;
+  el.querySelectorAll("[data-up]").forEach(inp=>inp.onchange=async()=>{const L=inp.dataset.up;for(const fl of inp.files){const id=uid();await fileDB.put("file:"+id,{name:fl.name,type:fl.type,data:await fl.arrayBuffer()});(att[L]=att[L]||[]).push({id,name:fl.name,type:fl.type})}onChange();appendixCards(el,list,att,onChange);toast("Attached to Appendix "+L)});
+  el.querySelectorAll("[data-rm]").forEach(b=>b.onclick=async()=>{const [L,id]=b.dataset.rm.split(":");att[L]=(att[L]||[]).filter(x=>x.id!==id);await fileDB.del("file:"+id).catch(()=>{});onChange();appendixCards(el,list,att,onChange)})}
+
+/* ---------- Dashboard (Supabase) — same login & ih_jobs table as the CEM Calculator ---------- */
+async function initCloud(){const C=window.IHCC_CONFIG||{},st=$("#cloudSt"),say=t=>{if(st)st.textContent=t};
+  try{if(!window.supabase||!C.SUPABASE_URL||/YOUR-PROJECT/i.test(C.SUPABASE_URL)){say("Offline: saved on this device only");return}
+    const sb=window.supabase.createClient(C.SUPABASE_URL.trim().replace(/\/$/,""),String(C.SUPABASE_ANON_KEY||"").trim());const {data:{session}}=await sb.auth.getSession();
+    if(!session){say("Not logged in: log in on the dashboard to save jobs");return}
+    const {data}=await sb.from("app_users").select("role").eq("email",(session.user.email||"").toLowerCase()).maybeSingle();if(!data){say("Not authorised for the dashboard");return}
+    window.__sb=sb;window.__role=data.role;say(data.role==="viewer"?"☁️ View only":"☁️ Connected to dashboard")}catch(e){console.error(e);say("Offline: saved on this device only")}}
+const slugId=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)||"x";
+const isoD=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+const addMo=(s,m)=>{const d=new Date((s||isoD(new Date()))+"T00:00:00");d.setMonth(d.getMonth()+m);return isoD(d)};
+/* Section "Complete & save to dashboard": el gets the form; jobsFn(opts) returns job objects */
+function dashboardCard(el,jobsFn,info){
+  el.innerHTML=`<p class="muted" style="margin:0 0 10px;font-size:13px">Records this report in the IH job register on the dashboard, with the highest result vs limit, the next due date and next action. Saving again updates the same jobs; it doesn't create duplicates.</p>
+  <div class="fg"><div><label>Job status</label><select id="svStatus"><option>Completed</option><option>Reporting</option><option>In progress</option></select></div>
+   <div><label>Person in charge</label><input id="svPic"></div><div><label>Report date</label><input type="date" id="svDate"></div><div><label>Request date (optional)</label><input type="date" id="svReq"></div></div>
+  <div class="ts" style="margin-top:12px"><table id="svPrev"></table></div>
+  <div class="row noP" style="margin-top:12px"><button class="pri" id="bSave">✔ Complete &amp; save to dashboard</button><span id="svMsg" class="muted" style="font-size:13px"></span></div>`;
+  const opts=()=>({status:$("#svStatus").value,pic:$("#svPic").value,date:$("#svDate").value||isoD(new Date()),req:$("#svReq").value});
+  const prev=()=>{if(!$("#svDate").value)$("#svDate").value=isoD(new Date());if(!$("#svPic").value)$("#svPic").value=info.assessor||"";const J=jobsFn(opts());
+    $("#svPrev").innerHTML=J.length?`<tr><th>Dashboard job</th><th>Location</th><th>Category</th><th>Result</th><th>Limit</th><th>Priority</th><th>Next action</th></tr>`+J.map(j=>`<tr><td>${esc(j.title)}</td><td>${esc(j.location)||'<span class="pill p-over">set Client / site name</span>'}</td><td>${esc(j.category)}</td><td class="n">${j.result===""?"–":esc(j.result)+" "+esc(j.unit)}</td><td class="n">${j.nab===""?"–":esc(j.nab)}</td><td><span class="pill ${j.priority==="Critical"?"p-over":j.priority==="High"?"p-warn":""}">${j.priority}</span></td><td style="white-space:normal;font-size:12px;min-width:220px">${esc(j.nextAction)}</td></tr>`).join(""):`<tr><td class="muted">Enter the results first.</td></tr>`};
+  ["#svStatus","#svPic","#svDate","#svReq"].forEach(s=>$(s).onchange=prev);
+  $("#bSave").onclick=async()=>{const sb=window.__sb,role=window.__role;
+    if(!sb)return toast("Log in from the dashboard first, then reopen this page to save.",5000);
+    if(role!=="admin"&&role!=="editor")return toast("Your account is view-only. Ask an admin for editor access.",5000);
+    const J=jobsFn(opts());if(!J.length)return toast("Nothing to save yet.");
+    if(!info.reportNo&&!confirm("This report has no Report No. Save anyway? (Report No. keeps re-saves from creating duplicates.)"))return;
+    try{const {data:ex,error:e1}=await sb.from("ih_jobs").select("id,data");if(e1)throw e1;const byId=Object.fromEntries((ex||[]).map(r=>[r.id,r.data]));
+      let maxNo=Math.max(0,...(ex||[]).map(r=>+(r.data&&r.data.no)||0));
+      const up=J.map(j=>{const old=byId[j.id];j.no=old&&old.no?old.no:++maxNo;if(old&&old.controls&&old.controls.length)j.controls=old.controls;if(old&&old.requestDate&&!$("#svReq").value)j.requestDate=old.requestDate;return{id:j.id,data:j}});
+      const {error:e2}=await sb.from("ih_jobs").upsert(up);if(e2)throw e2;
+      $("#svMsg").innerHTML=`Saved ${up.length} job${up.length>1?"s":""} at ${new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}. <a href="index.html">Open dashboard →</a>`;toast("Saved to dashboard")}
+    catch(e){console.error(e);toast("Could not save: "+(e.message||e),6000)}};
+  prev();return{refresh:prev}}
+function baseJob(o){return{reportId:null,reportNo:"",location:"",category:"Noise",pic:"",priority:"Normal",status:"Completed",requestDate:"",deadline:"",result:"",unit:"",nab:"",recur:0,nextAction:"",notes:"",
+  checklist:{sampling:true,lab:true,draft:true,review:o.status==="Completed"},seriesId:o.id,cycle:1,controls:[],completedAt:o.status==="Completed"?o.deadline:null,...o}}
+
+/* ---------- Download section (CEM section 8 style): readiness + "Download full report…" (PDF / Word) + Excel + Print ---------- */
+function downloadSection(el,o){
+  el.innerHTML=`<div id="readiness"></div><div class="row noP" style="margin-top:8px"><button class="pri" id="bDl">⬇ Download full report…</button><button id="bXls">Download Excel</button><button id="bPrint">Print this page</button></div>
+  <div class="modal" id="mDl"><div class="box"><h3 style="margin:0">Download full report</h3><p class="muted" style="margin:4px 0 0;font-size:13px">Both include the cover, all sections and your attached appendices.</p>
+   <div class="choice"><button id="dlPdf">📕 PDF file<span>Final, ready to send</span></button><button id="dlDoc">📘 Word file (.docx)<span>Editable</span></button></div>
+   <p class="muted" style="font-size:12px;margin:0 0 10px">PDF opens a print-ready preview: choose "Save as PDF" as the printer. In Word, attached PDFs are inserted as page images; click Yes when Word asks to update the table of contents.</p>
+   <div class="row" style="justify-content:flex-end"><button id="dlCancel">Cancel</button></div></div></div>`;
+  const m=$("#mDl");$("#bDl").onclick=()=>m.classList.add("show");$("#dlCancel").onclick=()=>m.classList.remove("show");
+  $("#dlDoc").onclick=()=>{m.classList.remove("show");o.word()};$("#dlPdf").onclick=()=>{m.classList.remove("show");o.pdf()};
+  $("#bXls").onclick=()=>{if(!window.XLSX)return toast("Excel library not loaded");const wb=XLSX.utils.book_new();o.excel().forEach(([n,rows])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),n.slice(0,31)));XLSX.writeFile(wb,o.xlsName())};
+  $("#bPrint").onclick=()=>print();
+  const ready=()=>{const miss=o.missing(),na=o.appx().filter(([L])=>!(o.att()[L]||[]).length).map(([L])=>L);
+    $("#readiness").innerHTML=(miss.length?`<div class="note">Still missing: ${miss.map(esc).join(" · ")}. You can still download a draft.</div>`:`<div class="ok">Report data is complete.</div>`)+
+      (na.length?`<div class="muted" style="font-size:12.5px">No file yet for Appendix ${na.join(", ")}. Those appendices will show “No document attached”.</div>`:"")};
+  ready();return{refresh:ready}}
