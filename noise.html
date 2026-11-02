@@ -79,7 +79,7 @@ $("#bEqAdd").onclick=()=>{st.inst.push({inst:"",mfr:"",model:"",id:"",cal:"",pho
 function refresh(){a=analyse();save();if(dash)dash.refresh();if(dl)dl.refresh();
   $("#kpi").innerHTML=`<div>Monitored<b>${a.n}</b></div><div>&gt; 82 dB(A)<b>${a.c82}</b></div><div>&gt; NEL 85 dB(A)<b>${a.cnel}</b></div><div>&gt; Max 115 dB(A)<b>${a.cmx}</b></div><div>&gt; Peak 140 dB(C)<b>${a.cpk}</b></div><div>Area &gt; 85 dB(A)<b>${a.aRed.length}/${a.A.length}</b></div>`;
   const Q=qa(a);$("#qa").innerHTML=Q.length?Q.map(([c,m])=>`<div class="${c==="err"?"err":"note"}">${c==="err"?"⛔":"⚠"} ${esc(m)}</div>`).join(""):`<div class="ok">✔ No issues found.</div>`;
-  $$("[data-tx]").forEach(el=>{if(st.text[el.dataset.tx]==null)el.value=textOf(el.dataset.tx,a)})}
+  textsSoft($("#texts"),TEXTS,st,a)}
 const pill=(b,t)=>`<span class="pill ${b?"p-over":"p-safe"}">${t}</span>`;
 const zp=z=>`<span class="pill ${z==="Purple"?"p-purple":z==="Red"?"p-over":z==="Yellow"?"p-warn":"p-safe"}">${z||"–"}</span>`;
 function drawAll(){st.att=st.att||{};companyCard($("#coCard"),st.info,()=>save());bindFields($("#fInfo"),st.info,()=>refresh());
@@ -92,9 +92,7 @@ function drawAll(){st.att=st.att||{};companyCard($("#coCard"),st.info,()=>save()
   editTable($("#tSrc"),[{k:"src",h:"Noise source"},{k:"disc",h:"Discussion",type:"area",w:320},{k:"eng",h:"Engineering recommendation",type:"area",w:300}],st.src,ch);
   editTable($("#tPhp"),[{k:"type",h:"Type"},{k:"area",h:"Area"},{k:"model",h:"Model"},{k:"nrr",h:"NRR (dB)"}],st.php,ch);
   [["#cEng","eng"],["#cAdm","adm"],["#cWarn","warn"]].forEach(([s,k])=>{$(s).value=(st.ctl[k]||[]).join("\n");$(s).oninput=()=>{st.ctl[k]=$(s).value.split("\n").map(x=>x.trim()).filter(Boolean);refresh()}});
-  $("#texts").innerHTML=TEXTS.map(([k,l])=>`<div class="tx" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>${esc(l)}</b><button class="sm noP" data-rw="${k}">↻ Rewrite from data</button></div><textarea data-tx="${k}"></textarea></div>`).join("");
-  $$("[data-tx]").forEach(el=>{el.value=st.text[el.dataset.tx]??"";el.oninput=()=>{st.text[el.dataset.tx]=el.value;save()}});
-  $$("[data-rw]").forEach(b=>b.onclick=()=>{delete st.text[b.dataset.rw];refresh()});
+  textsUI($("#texts"),TEXTS,()=>st,analyse,save);
   dash=dashboardCard($("#dash"),dashJobs,st.info);mkDl();refresh()}
 $("#bSample").onclick=()=>{if(st.personal.length&&!confirm("Replace the current data with the previous project (PCM Klang Motor – Toyota Sg. Rasah NRA, July 2026)?"))return;st=structuredClone(window.NOISE_SAMPLE);applyCompanyDefault(st.info);drawAll();toast("Previous project loaded")};
 $("#bNew").onclick=()=>{if(!confirm("Start a new blank NRA report? Download a JSON backup first if you need the current data."))return;st=structuredClone(BLANK);applyCompanyDefault(st.info);drawAll()};

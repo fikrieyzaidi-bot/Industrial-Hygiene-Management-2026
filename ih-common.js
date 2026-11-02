@@ -6,8 +6,8 @@ const num=v=>{if(v===""||v==null)return null;const n=parseFloat(String(v).replac
 const f1=v=>v==null||!isFinite(v)?"–":(Math.round(v*10)/10).toFixed(1);
 const listTxt=a=>a.length<=1?(a[0]||""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
 const WORDS=["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"];
-const nW=n=>`${(WORDS[n]||String(n)).replace(/^./,c=>c.toUpperCase())} (${n})`;
-const nw=n=>`${WORDS[n]||String(n)} (${n})`;
+const nW=n=>WORDS[n]?`${WORDS[n].replace(/^./,c=>c.toUpperCase())} (${n})`:String(n);
+const nw=n=>WORDS[n]?`${WORDS[n]} (${n})`:String(n);
 function toast(m,ms=2800){let t=$("#toast");if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),ms)}
 const Store={load(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v||structuredClone(d)}catch(e){return structuredClone(d)}},
   save(k,v){clearTimeout(this["_"+k]);this["_"+k]=setTimeout(()=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast("Browser storage full – download a backup (JSON).")}},250)}};
@@ -242,3 +242,20 @@ function downloadSection(el,o){
     $("#readiness").innerHTML=(miss.length?`<div class="note">Still missing: ${miss.map(esc).join(" · ")}. You can still download a draft.</div>`:`<div class="ok">Report data is complete.</div>`)+
       (na.length?`<div class="muted" style="font-size:12.5px">No file yet for Appendix ${na.join(", ")}. Those appendices will show “No document attached”.</div>`:"")};
   ready();return{refresh:ready}}
+
+/* ---------- Report text sections (CEM section 6 behaviour) ---------- */
+/* TEXTS=[[key,title,(a,v)=>text]]; v = wording variant, bumped by "Rewrite" so the assessor gets fresh phrasing from the same data */
+const pick=(v,arr)=>arr[(v||0)%arr.length];
+const fixTxt=s=>String(s).replace(/(^|[^.])\.\.(?!\.)/g,"$1.").replace(/\s+([,.;])/g,"$1").replace(/ {2,}/g," ").trim();
+function textOfGen(TEXTS,st,k,a){if(st.text[k]!=null)return st.text[k];const t=TEXTS.find(x=>x[0]===k);return t?fixTxt(t[2](a,(st.textVar||{})[k]||0)):""}
+function textsUI(el,TEXTS,getSt,getA,save){const st=getSt();
+  el.innerHTML=`<p class="muted" style="margin:0 0 10px;font-size:13px">Written from your results, the limits and the existing controls, the way a senior hygiene technician / assessor would. Edit any section; “Rewrite” rebuilds it from the latest data with new wording.</p>`+
+   TEXTS.map(([k,t])=>`<div class="tx" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><label style="margin:0;font-weight:600;color:var(--ink)">${esc(t)}</label><button class="sm noP" data-txr="${k}">Rewrite</button></div><textarea data-tx="${k}"></textarea></div>`).join("")+
+   `<button class="noP" id="bRegen">Rewrite all sections from results</button>`;
+  const a=getA();TEXTS.forEach(([k])=>{const ta=el.querySelector(`[data-tx="${k}"]`);ta.value=textOfGen(TEXTS,st,k,a);ta.style.height=Math.min(420,Math.max(110,ta.value.length/4))+"px";ta.oninput=()=>{getSt().text[k]=ta.value;save()}});
+  el.querySelectorAll("[data-txr]").forEach(b=>b.onclick=()=>{const s=getSt(),k=b.dataset.txr,ta=el.querySelector(`[data-tx="${k}"]`),before=ta.value;
+    s.textVar=s.textVar||{};s.textVar[k]=(s.textVar[k]||0)+1;delete s.text[k];save();ta.value=textOfGen(TEXTS,s,k,getA());
+    ta.style.transition="background .6s";ta.style.background="#fff6d6";setTimeout(()=>ta.style.background="",900);
+    toast(ta.value===before?"Already up to date with your latest results":"Rewritten from your latest results (new wording)")});
+  el.querySelector("#bRegen").onclick=()=>{const s=getSt();s.textVar=s.textVar||{};TEXTS.forEach(([k])=>s.textVar[k]=(s.textVar[k]||0)+1);s.text={};save();textsUI(el,TEXTS,getSt,getA,save);toast("All sections rewritten from your latest results")}}
+function textsSoft(el,TEXTS,st,a){TEXTS.forEach(([k])=>{const ta=el.querySelector(`[data-tx="${k}"]`);if(ta&&st.text[k]==null&&document.activeElement!==ta)ta.value=textOfGen(TEXTS,st,k,a)})}
