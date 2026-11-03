@@ -231,7 +231,7 @@ function baseJob(o){return{reportId:null,reportNo:"",location:"",category:"Noise
 
 /* ---------- Download section (CEM section 8 style): readiness + "Download full report…" (PDF / Word) + Excel + Print ---------- */
 function downloadSection(el,o){
-  el.innerHTML=`<div id="readiness"></div><div class="row noP" style="margin-top:8px"><button class="pri" id="bDl">⬇ Download full report…</button><button id="bXls">Download Excel</button><button id="bPrint">Print this page</button></div>
+  el.innerHTML=`<div id="readiness"></div><div class="row noP" style="margin-top:8px"><button class="pri" id="bDl">⬇ Download full report…</button><button id="bXls">Download Excel</button><button id="bPpt">📊 Download presentation (.pptx)</button><button id="bPrint">Print this page</button></div>
   <div class="modal" id="mDl"><div class="box"><h3 style="margin:0">Download full report</h3><p class="muted" style="margin:4px 0 0;font-size:13px">Both include the cover, all sections and your attached appendices.</p>
    <div class="choice"><button id="dlPdf">📕 PDF file<span>Final, ready to send</span></button><button id="dlDoc">📘 Word file (.docx)<span>Editable</span></button></div>
    <p class="muted" style="font-size:12px;margin:0 0 10px">PDF opens a print-ready preview: choose "Save as PDF" as the printer. In Word, attached PDFs are inserted as page images; click Yes when Word asks to update the table of contents.</p>
@@ -240,6 +240,7 @@ function downloadSection(el,o){
   $("#dlDoc").onclick=()=>{m.classList.remove("show");o.word()};$("#dlPdf").onclick=()=>{m.classList.remove("show");o.pdf()};
   $("#bXls").onclick=()=>{if(!window.XLSX)return toast("Excel library not loaded");const wb=XLSX.utils.book_new();o.excel().forEach(([n,rows])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),n.slice(0,31)));XLSX.writeFile(wb,o.xlsName())};
   $("#bPrint").onclick=()=>print();
+  $("#bPpt").onclick=()=>o.ppt?o.ppt():toast("Presentation not available");
   const ready=()=>{const miss=o.missing(),na=o.appx().filter(([L])=>!(o.att()[L]||[]).length).map(([L])=>L);
     $("#readiness").innerHTML=(miss.length?`<div class="note">Still missing: ${miss.map(esc).join(" · ")}. You can still download a draft.</div>`:`<div class="ok">Report data is complete.</div>`)+
       (na.length?`<div class="muted" style="font-size:12.5px">No file yet for Appendix ${na.join(", ")}. Those appendices will show “No document attached”.</div>`:"")};

@@ -66,3 +66,23 @@ Each section is written from your data and results in a senior hygiene technicia
 - **Total jobs, Active and Completed** count unique report numbers. A Noise report saves one job per SEG but counts as one report. The register shows "x of y jobs · n reports".
 - The **📄 Report** button opens the right module: CEM → `cem.html`, Noise jobs → `noise.html`, CHRA jobs → `chra.html`. "📝 Start CEM" remains only for jobs with no report yet.
 - **+ Add picture** under the recommendations: CEM 7.1 Action to Be Taken, Noise 8.0 Recommendations, CHRA 5.0 Recommendations (new text section). Pictures print below the text in Word and PDF.
+
+## CEM — client presentation (.pptx)
+Section 8 (Download) has a new **📊 Download presentation (.pptx)** button. It builds an editable 16:9 PowerPoint from the report loaded in CEM (file `cem-slides.js`, library PptxGenJS). The slides:
+1. **Cover:** logo, company, client, site, date, report no., presenter.
+2. **Agenda.**
+3. **Introduction:** purpose, USECHH Reg. 26–27, objective, scope.
+4. **Legal requirement & exposure limits:** PEL table, method, media, the 50% rule and the MEL note.
+5. **Methodology & equipment used:** equipment cards with photos.
+6. **Monitoring results:** table with status colours.
+7. **Results compared with the limit:** chart, red / amber / green.
+8. **Key findings:** counts per band and the highest result per chemical.
+9. **Existing control measures:** engineering, administrative, PPE/RPE.
+10. **Recommendations:** from 7.1, with your recommendation pictures.
+11. **Summary:** compliance per chemical and the next monitoring.
+12. **Thank you / Q&A:** contact details.
+
+## Noise & CHRA — client presentation (.pptx)
+The Download section has **📊 Download presentation (.pptx)** (file `ih-slides.js`), in the same style as the CEM deck.
+- **Noise (14 slides):** Cover, Agenda, Introduction, Noise exposure limits & colour zones, Methodology & instruments (photos), Area noise results (chart by zone), Personal exposure results (table), LEX,8h chart, Key findings, Existing controls & PHP adequacy, Recommendations (pictures), Hearing Conservation Programme, Summary, Q&A.
+- **CHRA (14 slides):** Cover, Agenda, Introduction, CHRA methodology, Work units, Hazard identification, Risk results (table), Risk profile chart, Key findings, Adequacy of controls, Recommendations & action priority (pictures), Exposure monitoring & medical surveillance, Summary, Q&A.

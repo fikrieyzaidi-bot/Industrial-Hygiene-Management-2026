@@ -6,6 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 </head><body>
 <div class="top noP"><a href="index.html">← Back to dashboard</a><a href="cem.html">🧪 CEM</a><a href="chra.html">⚗️ CHRA</a><span id="cloudSt" style="font-size:12.5px;opacity:.95;margin-left:6px"></span>
  <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button class="tb" id="bSample">📂 Load previous project</button>
@@ -54,7 +55,7 @@
 <div class="sec"><h2>9. Download</h2><div class="card" id="dl"></div></div>
 </div>
 <div class="wrap" style="padding-top:0"><div class="sec"><h2>10. Complete &amp; save to dashboard</h2><div class="card" id="dash"></div></div></div>
-<script src="ih-common.js?v=20261102a"></script><script src="noise-sample.js?v=20261102a"></script><script src="noise-app.js?v=20261102a"></script>
+<script src="ih-slides.js?v=20261102b"></script><script src="ih-common.js?v=20261102a"></script><script src="noise-sample.js?v=20261102a"></script><script src="noise-app.js?v=20261102a"></script>
 <script>
 let a=null,dash=null;
 function renderInst(){const F=(i,k,l,ph)=>`<div><label>${l}</label><input data-in="${i}" data-k="${k}" value="${esc(st.inst[i][k]||"")}" placeholder="${ph||""}"></div>`;
@@ -103,7 +104,7 @@ $("#bBackup").onclick=()=>backupJson(st,`NRA_${(st.info.clientShort||st.info.cli
 $("#inJson").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{st={...structuredClone(BLANK),...await readJsonFile(f)};drawAll();toast("Restored")}catch(err){toast("Invalid JSON file")}e.target.value=""};
 $("#inDs").onchange=async e=>{let n=0;for(const f of e.target.files){try{n+=await importDatasheet(f)}catch(err){console.error(err);toast(`Could not read ${f.name}`)}}e.target.value="";drawAll();toast(`${n} personal result(s) imported`)};
 const doWord=()=>downloadWord(model(),META(),`${st.info.type||""} NRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""),st.info),doPdf=()=>previewBlocks(model(),META(),st.info);
-let dl=null;function mkDl(){dl=downloadSection($("#dl"),{word:doWord,pdf:doPdf,att:()=>st.att,appx:()=>NOISE_APPX,xlsName:()=>`NRA ${st.info.client||"report"}.xlsx`,
+let dl=null;function mkDl(){dl=downloadSection($("#dl"),{word:doWord,pdf:doPdf,ppt:()=>window.buildNoiseDeck(),att:()=>st.att,appx:()=>NOISE_APPX,xlsName:()=>`NRA ${st.info.client||"report"}.xlsx`,
   missing:()=>[!st.info.client&&"client name",!st.personal.length&&"personal noise results",!st.area.length&&"area noise monitoring",!st.inst.length&&"instruments (Table 3)",!st.info.assessor&&"Noise Risk Assessor"].filter(Boolean),
   excel:()=>{const A=analyse();return[["Personal (Table 8)",[["Date","SEG","Employee","Working area","Dosimeter","Duration","Dose %","LeqTe","LEX,8h","Max","Peak","Excessive 82","NEL 85","Max 115","Peak 140"],...A.P.map(p=>[p.date,p.seg,p.name,p.area,p.dosi,p.dur,+f1(p.r.dose),p.r.leq,+f1(p.r.lex),p.r.mx,p.r.pk,yn(p.r.e82),yn(p.r.nel),yn(p.r.emx),yn(p.r.epk)])]],
     ["Area (Table 7)",[["Working area","Source of noise","Type","Min","Max","L(average)","Avg dB(A)","Zone"],...A.A.map(x=>[x.area,x.src,x.type,num(x.min),num(x.max),num(x.lavg),+f1(x.avgN),x.z])]],

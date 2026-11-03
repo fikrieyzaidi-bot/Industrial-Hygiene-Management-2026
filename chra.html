@@ -6,6 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@9.8.1/dist/index.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 </head><body>
 <div class="top noP"><a href="index.html">← Back to dashboard</a><a href="cem.html">🧪 CEM</a><a href="noise.html">🔊 Noise</a><span id="cloudSt" style="font-size:12.5px;opacity:.95;margin-left:6px"></span>
  <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button class="tb" id="bSample">📂 Load previous project</button>
@@ -41,7 +42,7 @@
 <div class="sec"><h2>7. Download</h2><div class="card" id="dl"></div></div>
 </div>
 <div class="wrap" style="padding-top:0"><div class="sec"><h2>8. Complete &amp; save to dashboard</h2><div class="card" id="dash"></div></div></div>
-<script src="ih-common.js?v=20261102a"></script><script src="chra-sample.js?v=20261102a"></script><script src="chra-app.js?v=20261102a"></script>
+<script src="ih-slides.js?v=20261102b"></script><script src="ih-common.js?v=20261102a"></script><script src="chra-sample.js?v=20261102a"></script><script src="chra-app.js?v=20261102a"></script>
 <script>
 let cur=0,dash=null;
 const lvlPill=l=>`<span class="pill ${l==="High"?"p-over":l==="Moderate"?"p-warn":l==="Low"?"p-safe":""}">${l}</span>`;
@@ -93,7 +94,7 @@ $("#inJson").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{st={.
 $("#inForms").onchange=async e=>{let n=[];for(const f of e.target.files){try{const w=await importForms(f);if(w)n.push(w.name)}catch(err){console.error(err);toast(`Could not read ${f.name}`)}}e.target.value="";drawAll();if(n.length)toast(`Imported: ${n.join(", ")}`)};
 $("#bAddWU").onclick=()=>{st.wus.push(newWU(prompt("Work unit name","")||"New work unit"));cur=st.wus.length-1;drawAll()};
 const doWord=()=>downloadWord(model(),META(),`CHRA Report - ${st.info.client||"report"}.docx`.replace(/[\\/:*?"<>|]/g,""),st.info),doPdf=()=>previewBlocks(model(),META(),st.info);
-let dl=null;function mkDl(){dl=downloadSection($("#dl"),{word:doWord,pdf:doPdf,att:()=>st.att,appx:chraAppx,xlsName:()=>`CHRA ${st.info.client||"report"}.xlsx`,
+let dl=null;function mkDl(){dl=downloadSection($("#dl"),{word:doWord,pdf:doPdf,ppt:()=>window.buildChraDeck(),att:()=>st.att,appx:chraAppx,xlsName:()=>`CHRA ${st.info.client||"report"}.xlsx`,
   missing:()=>{const A=analyse();return[!st.info.client&&"client name",!st.wus.length&&"work units",!st.info.assessor&&"CHRA assessor",...A.W.filter(x=>x.s.summaryOnly).map(x=>`Forms A–D for ${x.w.name}`)].filter(Boolean)},
   excel:()=>{const A=analyse(),rows=[["Work unit","Chemicals","Inh High","Inh Moderate","Inh Low","Derm High","Derm Moderate","Derm Low","Ingestion","AP1","AP2","AP3"],...A.W.map(({w,s})=>[w.name,s.nchem,s.inhH,s.inhM,s.inhL,s.derH,s.derM,s.derL,s.ing,s.ap1,s.ap2,s.ap3])];
     const inh=[["Work unit","Job / task","Chemical","FR","DR","FDR","MR","ER","HR","RR","Risk"]];A.W.forEach(({w,s})=>w.inh.forEach((r,i)=>inh.push([w.name,r.task,r.chem,r.fr,r.dr,s.I[i].fdr,r.mr,s.I[i].er,r.hr,s.I[i].rr??"ND",s.I[i].lvl])));
